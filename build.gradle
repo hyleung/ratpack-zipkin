@@ -1,0 +1,44 @@
+apply plugin: 'application'
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: "io.ratpack.ratpack-java"
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'io.ratpack:ratpack-gradle:1.0.0',
+                'com.github.jengelman.gradle.plugins:shadow:1.2.1'
+    }
+}
+repositories {
+    jcenter()
+}
+if (!JavaVersion.current().java8Compatible) {
+    throw new IllegalStateException("Must be built with Java 8 or higher")
+}
+mainClassName = "com.example.server.App"
+
+run {
+    /* Pass all the properties: */
+    systemProperties System.getProperties()
+}
+
+dependencies {
+    compile ratpack.dependency("guice")
+    compile 'org.slf4j:slf4j-api:1.7.13'
+    compile 'com.github.kristofa:brave-spancollector-scribe:3.5.0'
+    compile 'com.github.kristofa:brave-http:3.5.0'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+}
+
+idea {
+    project {
+        //use JDK 1.8 in idea
+        jdkName "1.8"
+        languageLevel "1.8"
+    }
+}
+
