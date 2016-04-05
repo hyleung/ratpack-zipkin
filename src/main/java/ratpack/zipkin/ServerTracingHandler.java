@@ -7,7 +7,7 @@ import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
-import ratpack.zipkin.internal.RatpackServerReqponseAdapter;
+import ratpack.zipkin.internal.RatpackServerResponseAdapter;
 import ratpack.zipkin.internal.RatpackServerRequestAdapter;
 
 import javax.inject.Inject;
@@ -39,7 +39,7 @@ public class ServerTracingHandler implements Handler {
     requestInterceptor.handle(requestAdapter);
     ctx.getResponse()
        .beforeSend(response -> responseInterceptor
-           .handle(new RatpackServerReqponseAdapter(response)));
+           .handle(new RatpackServerResponseAdapter(response)));
     ctx.next();
   }
 }

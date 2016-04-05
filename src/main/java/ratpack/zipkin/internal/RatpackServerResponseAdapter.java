@@ -9,10 +9,10 @@ import java.util.Collection;
 /**
  * Created by hyleung on 2016-04-04.
  */
-public class RatpackServerReqponseAdapter implements ServerResponseAdapter {
+public class RatpackServerResponseAdapter implements ServerResponseAdapter {
   private final Response response;
 
-  public RatpackServerReqponseAdapter(final Response response) {
+  public RatpackServerResponseAdapter(final Response response) {
     this.response = response;
   }
 
