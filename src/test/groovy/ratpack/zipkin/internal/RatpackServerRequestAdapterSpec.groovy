@@ -2,9 +2,8 @@ package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.ServerRequestAdapter
 import com.github.kristofa.brave.http.BraveHttpHeaders
+import com.github.kristofa.brave.http.HttpServerRequest
 import com.github.kristofa.brave.http.SpanNameProvider
-import ratpack.http.Headers
-import ratpack.http.Request
 import spock.lang.Specification
 
 import static org.junit.Assert.assertEquals
@@ -13,7 +12,7 @@ import static org.junit.Assert.assertEquals
  * Test suite for {@link RatpackServerRequestAdapter}.
  */
 class RatpackServerRequestAdapterSpec extends Specification {
-    def Request request = Stub(Request)
+    def HttpServerRequest request = Stub(HttpServerRequest)
     def SpanNameProvider spanNameProvider = Stub(SpanNameProvider)
     ServerRequestAdapter adapter
     def setup() {
@@ -22,10 +21,7 @@ class RatpackServerRequestAdapterSpec extends Specification {
 
     def 'getTraceData should set sampled flag'(String headerValue, boolean expected) {
         setup:
-            request.getHeaders() >>
-                    Stub(Headers) {
-                        get(BraveHttpHeaders.Sampled.getName()) >> headerValue
-                    }
+            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> headerValue
         when:
             def traceData = adapter.getTraceData()
         then:

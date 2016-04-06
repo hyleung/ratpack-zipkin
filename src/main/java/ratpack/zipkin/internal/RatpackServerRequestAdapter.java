@@ -5,6 +5,7 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.TraceData;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
+import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import ratpack.http.Request;
 
@@ -15,17 +16,17 @@ import java.util.Collection;
  */
 public class RatpackServerRequestAdapter implements ServerRequestAdapter {
   private final SpanNameProvider spanNameProvider;
-  private final Request request;
+  private final HttpServerRequest request;
 
   public RatpackServerRequestAdapter(final SpanNameProvider spanNameProvider,
-                                     final Request request) {
+                                     final HttpServerRequest request) {
     this.spanNameProvider = spanNameProvider;
     this.request = request;
   }
 
   @Override
   public TraceData getTraceData() {
-    final String sampled = request.getHeaders().get(BraveHttpHeaders.Sampled.getName());
+    final String sampled = request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
     TraceData.Builder builder = TraceData.builder();
     if ("0".equals(sampled) || "false".equals(sampled)) {
       builder.sample(false);
