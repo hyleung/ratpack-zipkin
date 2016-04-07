@@ -27,10 +27,10 @@ class RatpackServerRequestAdapterSpec extends Specification {
             request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> headerValue
             def parentId = "7b"
             def traceId = "1c8"
-            def spandId = "315"
+            def spanId = "315"
             request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
             request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spandId
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
         when:
             def traceData = adapter.getTraceData()
         then:
@@ -47,26 +47,58 @@ class RatpackServerRequestAdapterSpec extends Specification {
         setup:
             def parentId = "7b"
             def traceId = "1c8"
-            def spandId = "315"
+            def spanId = "315"
             request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
             request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
             request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spandId
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
         when:
             def traceData = adapter.getTraceData()
             def span = traceData.getSpanId()
         then:
             span.getParentSpanId() == IdConversion.convertToLong(parentId)
             span.getTraceId() == IdConversion.convertToLong(traceId)
-            span.getSpanId() == IdConversion.convertToLong(spandId)
+            span.getSpanId() == IdConversion.convertToLong(spanId)
     }
 
-    def 'getTraceData should NOT build SpanId if traceId and spanId headers not present'() {
+    def 'getTraceData should build SpanId if parentId is absent'() {
+        setup:
+            def traceId = "1c8"
+            def spanId = "315"
+            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
+            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> null
+            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
+        when:
+            def traceData = adapter.getTraceData()
+            def span = traceData.getSpanId()
+        then:
+            span.getParentSpanId() == null
+            span.getTraceId() == IdConversion.convertToLong(traceId)
+            span.getSpanId() == IdConversion.convertToLong(spanId)
+    }
+
+    def 'getTraceData should NOT build SpanId if traceId header not present'() {
         setup:
             def parentId = "7b"
+            def spanId = "315"
             request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
             request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
             request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> null
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
+        when:
+            def traceData = adapter.getTraceData()
+        then:
+            traceData.getSpanId() == null
+    }
+
+    def 'getTraceData should NOT build SpanId if spanId header not present'() {
+        setup:
+            def parentId = "7b"
+            def tracId = "315"
+            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
+            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> tracId
             request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> null
         when:
             def traceData = adapter.getTraceData()
