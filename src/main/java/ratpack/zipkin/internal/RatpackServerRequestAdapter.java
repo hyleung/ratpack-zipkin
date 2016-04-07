@@ -1,13 +1,9 @@
 package ratpack.zipkin.internal;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.ServerRequestAdapter;
-import com.github.kristofa.brave.TraceData;
+import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import ratpack.http.Request;
 
 import java.util.Collection;
 
@@ -31,7 +27,16 @@ public class RatpackServerRequestAdapter implements ServerRequestAdapter {
     if ("0".equals(sampled) || "false".equals(sampled)) {
       builder.sample(false);
     } else {
-      builder.sample(true);
+      final String parentSpanId = request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
+      final String traceId = request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
+      final String spanId = request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName());
+      if (traceId != null && spanId != null) {
+        SpanId span = getSpanId(traceId, spanId, parentSpanId);
+        return TraceData.builder()
+                        .sample(true)
+                        .spanId(span)
+                        .build();
+      }
     }
     return builder.build();
   }
@@ -44,5 +49,13 @@ public class RatpackServerRequestAdapter implements ServerRequestAdapter {
   @Override
   public Collection<KeyValueAnnotation> requestAnnotations() {
     throw new RuntimeException("Not implemented!");
+  }
+
+  private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
+    if (parentSpanId != null)
+    {
+      return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), IdConversion.convertToLong(parentSpanId));
+    }
+    return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), null);
   }
 }

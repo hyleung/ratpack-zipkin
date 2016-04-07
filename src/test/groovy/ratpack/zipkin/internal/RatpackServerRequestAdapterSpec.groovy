@@ -1,5 +1,6 @@
 package ratpack.zipkin.internal
 
+import com.github.kristofa.brave.IdConversion
 import com.github.kristofa.brave.ServerRequestAdapter
 import com.github.kristofa.brave.http.BraveHttpHeaders
 import com.github.kristofa.brave.http.HttpServerRequest
@@ -24,6 +25,12 @@ class RatpackServerRequestAdapterSpec extends Specification {
     def 'getTraceData should set sampled flag'(String headerValue, boolean expected) {
         setup:
             request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> headerValue
+            def parentId = "7b"
+            def traceId = "1c8"
+            def spandId = "315"
+            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spandId
         when:
             def traceData = adapter.getTraceData()
         then:
@@ -36,4 +43,43 @@ class RatpackServerRequestAdapterSpec extends Specification {
             "true"      | true
     }
 
+    def 'getTraceData should build SpanId from (correctly encoded) headers if sampled'() {
+        setup:
+            def parentId = "7b"
+            def traceId = "1c8"
+            def spandId = "315"
+            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
+            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spandId
+        when:
+            def traceData = adapter.getTraceData()
+            def span = traceData.getSpanId()
+        then:
+            span.getParentSpanId() == IdConversion.convertToLong(parentId)
+            span.getTraceId() == IdConversion.convertToLong(traceId)
+            span.getSpanId() == IdConversion.convertToLong(spandId)
+    }
+
+    def 'getTraceData should NOT build SpanId if traceId and spanId headers not present'() {
+        setup:
+            def parentId = "7b"
+            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
+            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> null
+            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> null
+        when:
+            def traceData = adapter.getTraceData()
+        then:
+            traceData.getSpanId() == null
+    }
+
+    def 'getTraceData should NOT build SpanId if NOT sampled'() {
+        setup:
+            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "0"
+        when:
+            def traceData = adapter.getTraceData()
+        then:
+            traceData.getSpanId() == null
+    }
 }
