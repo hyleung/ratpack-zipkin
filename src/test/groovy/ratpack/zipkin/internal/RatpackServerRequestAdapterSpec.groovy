@@ -5,6 +5,7 @@ import com.github.kristofa.brave.http.BraveHttpHeaders
 import com.github.kristofa.brave.http.HttpServerRequest
 import com.github.kristofa.brave.http.SpanNameProvider
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import static org.junit.Assert.assertEquals
 
@@ -19,6 +20,7 @@ class RatpackServerRequestAdapterSpec extends Specification {
          adapter = new RatpackServerRequestAdapter(spanNameProvider, request)
     }
 
+    @Unroll
     def 'getTraceData should set sampled flag'(String headerValue, boolean expected) {
         setup:
             request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> headerValue
