@@ -6,6 +6,7 @@ import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.SpanNameProvider;
 
 import java.util.Collection;
+import java.util.Collections;
 
 /**
  * Created by hyleung on 2016-04-04.
@@ -48,7 +49,7 @@ public class RatpackServerRequestAdapter implements ServerRequestAdapter {
 
   @Override
   public Collection<KeyValueAnnotation> requestAnnotations() {
-    throw new RuntimeException("Not implemented!");
+    return Collections.emptyList();
   }
 
   private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
