@@ -114,4 +114,14 @@ class RatpackServerRequestAdapterSpec extends Specification {
         then:
             traceData.getSpanId() == null
     }
+
+    def 'should return span name from provider'() {
+        setup:
+            def spanName = "expected-span-name"
+            spanNameProvider.spanName(request) >> spanName
+        when:
+            def result = adapter.getSpanName()
+        then:
+            result == spanName
+    }
 }

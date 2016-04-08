@@ -43,7 +43,7 @@ public class RatpackServerRequestAdapter implements ServerRequestAdapter {
 
   @Override
   public String getSpanName() {
-    throw new RuntimeException("Not implemented!");
+    return spanNameProvider.spanName(request);
   }
 
   @Override
