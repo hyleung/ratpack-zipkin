@@ -16,6 +16,7 @@
 package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.http.HttpServerRequest
+import ratpack.http.Headers
 import ratpack.http.HttpMethod
 import ratpack.http.Request
 import spock.lang.Specification
@@ -57,5 +58,17 @@ class RatpackHttpServerRequestSpec extends Specification {
             def result = httpServerRequest.getHttpMethod()
         then:
             result == "GET"
+    }
+    def 'HttpServerRequest should get headers'() {
+        setup:
+            def expected = "some-value"
+            def header = "some-header"
+            def headers = Stub(Headers)
+            headers.get(header) >> expected
+            request.getHeaders() >>  headers
+        when:
+            def result =  httpServerRequest.getHttpHeaderValue(header)
+        then:
+            result == expected
     }
 }
