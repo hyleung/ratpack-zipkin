@@ -16,6 +16,7 @@
 package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.http.HttpServerRequest
+import ratpack.http.HttpMethod
 import ratpack.http.Request
 import spock.lang.Specification
 
@@ -46,5 +47,15 @@ class RatpackHttpServerRequestSpec extends Specification {
             httpServerRequest.getUri()
         then:
             thrown(IllegalArgumentException)
+    }
+    def 'HttpServerRequest should return HTTP method'() {
+        setup:
+            def method = Stub(HttpMethod)
+            request.getMethod() >> method
+            method.getName() >> "GET"
+        when:
+            def result = httpServerRequest.getHttpMethod()
+        then:
+            result == "GET"
     }
 }

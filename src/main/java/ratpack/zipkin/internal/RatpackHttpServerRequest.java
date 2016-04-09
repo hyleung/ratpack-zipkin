@@ -16,6 +16,7 @@
 package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.http.HttpServerRequest;
+import ratpack.http.HttpMethod;
 import ratpack.http.Request;
 
 import java.net.URI;
@@ -42,6 +43,6 @@ public class RatpackHttpServerRequest implements HttpServerRequest {
 
   @Override
   public String getHttpMethod() {
-    throw new RuntimeException("Not implemented!");
+    return request.getMethod().getName();
   }
 }
