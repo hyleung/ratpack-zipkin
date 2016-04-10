@@ -21,7 +21,6 @@ import ratpack.http.Response
 import ratpack.http.internal.DefaultStatus
 import spock.genesis.Gen
 import spock.lang.Specification
-import spock.lang.Unroll
 
 /**
  * Test suite for {@link RatpackServerResponseAdapter}.
