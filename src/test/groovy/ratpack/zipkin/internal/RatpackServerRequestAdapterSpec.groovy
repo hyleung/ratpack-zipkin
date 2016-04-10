@@ -22,7 +22,8 @@ class RatpackServerRequestAdapterSpec extends Specification {
     }
 
     @Unroll
-    def 'getTraceData should set sampled flag'(String headerValue, boolean expected) {
+    def 'getTraceData should set sampled flag with header "X-B3-Sampled = #headerValue"'(String headerValue,
+                                                                                       boolean expected) {
         setup:
             request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> headerValue
             def parentId = "7b"

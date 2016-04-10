@@ -35,8 +35,7 @@ class RatpackServerResponseAdapterSpec extends Specification {
         responseAdapter = new RatpackServerResponseAdapter(response)
     }
 
-    @Unroll
-    def 'Should not return response annotation for #statusCode status'(int statusCode) {
+    def 'Should not return response annotation for 2xx status'(int statusCode) {
         setup:
             response.getStatus() >>  DefaultStatus.of(statusCode)
         when:
@@ -48,8 +47,7 @@ class RatpackServerResponseAdapterSpec extends Specification {
 
     }
 
-    @Unroll
-    def 'Should return annotations for #statusCode status (< 2xx)'(int statusCode) {
+    def 'Should return annotations for status (< 2xx)'(int statusCode) {
         setup:
             response.getStatus() >>  DefaultStatus.of(statusCode)
         when:
@@ -62,8 +60,7 @@ class RatpackServerResponseAdapterSpec extends Specification {
             statusCode << Gen.integer(100..199).take(10)
     }
 
-    @Unroll
-    def 'Should return annotations for #statusCode status (>= 3xx)'(int statusCode) {
+    def 'Should return annotations for status (>= 3xx)'(int statusCode) {
         setup:
             response.getStatus() >>  DefaultStatus.of(statusCode)
         when:
