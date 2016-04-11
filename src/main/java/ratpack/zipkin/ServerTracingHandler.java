@@ -21,7 +21,6 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
-import ratpack.zipkin.internal.RatpackHttpServerRequest;
 import ratpack.zipkin.internal.RatpackServerResponseAdapter;
 import ratpack.zipkin.internal.RatpackServerRequestAdapter;
 
@@ -47,8 +46,7 @@ public class ServerTracingHandler implements Handler {
   @Override
   public void handle(Context ctx) throws Exception {
     ServerRequestAdapter requestAdapter =
-        new RatpackServerRequestAdapter(spanNameProvider,
-            new RatpackHttpServerRequest(ctx.getRequest()));
+        new RatpackServerRequestAdapter(spanNameProvider, ctx.getRequest());
     requestInterceptor.handle(requestAdapter);
     ctx.getResponse()
        .beforeSend(response -> responseInterceptor

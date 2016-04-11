@@ -1,10 +1,26 @@
+/*
+ * Copyright 2016 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.IdConversion
 import com.github.kristofa.brave.ServerRequestAdapter
 import com.github.kristofa.brave.http.BraveHttpHeaders
-import com.github.kristofa.brave.http.HttpServerRequest
 import com.github.kristofa.brave.http.SpanNameProvider
+import ratpack.http.Headers
+import ratpack.http.Request
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -14,24 +30,26 @@ import static org.junit.Assert.assertEquals
  * Test suite for {@link RatpackServerRequestAdapter}.
  */
 class RatpackServerRequestAdapterSpec extends Specification {
-    def HttpServerRequest request = Stub(HttpServerRequest)
+    def Request request = Stub(Request)
     def SpanNameProvider spanNameProvider = Stub(SpanNameProvider)
+    def Headers headers  = Stub(Headers)
     ServerRequestAdapter adapter
     def setup() {
-         adapter = new RatpackServerRequestAdapter(spanNameProvider, request)
+        adapter = new RatpackServerRequestAdapter(spanNameProvider, request)
+        request.getHeaders() >> headers
     }
 
     @Unroll
     def 'getTraceData should set sampled flag with header "X-B3-Sampled = #headerValue"'(String headerValue,
                                                                                        boolean expected) {
         setup:
-            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> headerValue
+            headers.get(BraveHttpHeaders.Sampled.getName()) >> headerValue
             def parentId = "7b"
             def traceId = "1c8"
             def spanId = "315"
-            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
-            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
+            headers.get(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            headers.get(BraveHttpHeaders.TraceId.getName()) >> traceId
+            headers.get(BraveHttpHeaders.SpanId.getName()) >> spanId
         when:
             def traceData = adapter.getTraceData()
         then:
@@ -49,10 +67,10 @@ class RatpackServerRequestAdapterSpec extends Specification {
             def parentId = "7b"
             def traceId = "1c8"
             def spanId = "315"
-            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
-            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
-            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
+            headers.get(BraveHttpHeaders.Sampled.getName()) >> "1"
+            headers.get(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            headers.get(BraveHttpHeaders.TraceId.getName()) >> traceId
+            headers.get(BraveHttpHeaders.SpanId.getName()) >> spanId
         when:
             def traceData = adapter.getTraceData()
             def span = traceData.getSpanId()
@@ -66,10 +84,10 @@ class RatpackServerRequestAdapterSpec extends Specification {
         setup:
             def traceId = "1c8"
             def spanId = "315"
-            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
-            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> null
-            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> traceId
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
+            headers.get(BraveHttpHeaders.Sampled.getName()) >> "1"
+            headers.get(BraveHttpHeaders.ParentSpanId.getName()) >> null
+            headers.get(BraveHttpHeaders.TraceId.getName()) >> traceId
+            headers.get(BraveHttpHeaders.SpanId.getName()) >> spanId
         when:
             def traceData = adapter.getTraceData()
             def span = traceData.getSpanId()
@@ -83,10 +101,10 @@ class RatpackServerRequestAdapterSpec extends Specification {
         setup:
             def parentId = "7b"
             def spanId = "315"
-            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
-            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
-            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> null
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> spanId
+            headers.get(BraveHttpHeaders.Sampled.getName()) >> "1"
+            headers.get(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            headers.get(BraveHttpHeaders.TraceId.getName()) >> null
+            headers.get(BraveHttpHeaders.SpanId.getName()) >> spanId
         when:
             def traceData = adapter.getTraceData()
         then:
@@ -97,10 +115,10 @@ class RatpackServerRequestAdapterSpec extends Specification {
         setup:
             def parentId = "7b"
             def tracId = "315"
-            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "1"
-            request.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
-            request.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName()) >> tracId
-            request.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName()) >> null
+            headers.get(BraveHttpHeaders.Sampled.getName()) >> "1"
+            headers.get(BraveHttpHeaders.ParentSpanId.getName()) >> parentId
+            headers.get(BraveHttpHeaders.TraceId.getName()) >> tracId
+            headers.get(BraveHttpHeaders.SpanId.getName()) >> null
         when:
             def traceData = adapter.getTraceData()
         then:
@@ -109,24 +127,24 @@ class RatpackServerRequestAdapterSpec extends Specification {
 
     def 'getTraceData should NOT build SpanId if NOT sampled'() {
         setup:
-            request.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName()) >> "0"
+            headers.get(BraveHttpHeaders.Sampled.getName()) >> "0"
         when:
             def traceData = adapter.getTraceData()
         then:
             traceData.getSpanId() == null
     }
 
-    def 'adapter should return span name from provider'() {
+    def 'Should return span name from provider'() {
         setup:
             def spanName = "expected-span-name"
-            spanNameProvider.spanName(request) >> spanName
+            spanNameProvider.spanName(_) >> spanName
         when:
             def result = adapter.getSpanName()
         then:
             result == spanName
     }
 
-    def 'adapter should return empty annotations'() {
+    def 'Should return empty annotations'() {
         when:
             def result = adapter.requestAnnotations()
         then:

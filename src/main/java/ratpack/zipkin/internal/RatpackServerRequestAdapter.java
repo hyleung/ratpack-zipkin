@@ -19,6 +19,7 @@ import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import ratpack.http.Request;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -31,9 +32,9 @@ public class RatpackServerRequestAdapter implements ServerRequestAdapter {
   private final HttpServerRequest request;
 
   public RatpackServerRequestAdapter(final SpanNameProvider spanNameProvider,
-                                     final HttpServerRequest request) {
+                                     final Request request) {
     this.spanNameProvider = spanNameProvider;
-    this.request = request;
+    this.request = new RatpackHttpServerRequest(request);
   }
 
   @Override

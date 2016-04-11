@@ -21,12 +21,12 @@ import ratpack.http.Request;
 import java.net.URI;
 
 /**
- * Created by hyleung on 2016-04-05.
+ * Implements {@link HttpServerRequest} wrapper around a Ratpack {@link Request}.
  */
-public class RatpackHttpServerRequest implements HttpServerRequest {
+class RatpackHttpServerRequest implements HttpServerRequest {
   private final Request request;
 
-  public RatpackHttpServerRequest(final Request request) {
+  RatpackHttpServerRequest(final Request request) {
     this.request = request;
   }
 
