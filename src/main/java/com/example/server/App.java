@@ -4,6 +4,7 @@ import com.github.kristofa.brave.Brave;
 import ratpack.server.RatpackServer;
 import ratpack.zipkin.ServerTracingDecorator;
 import ratpack.zipkin.ServerTracingHandler;
+import ratpack.zipkin.ServerTracingModule;
 
 import static ratpack.guice.Guice.registry;
 
@@ -19,8 +20,9 @@ public class App {
             .registry(registry(binding ->
                 binding.bind(ServerTracingHandler.class)
                        .bind(ServerTracingDecorator.class)
-                       .bindInstance(new Brave.Builder("ratpack-demo").build())
-                       .module(new BraveModule())
+                       .module(ServerTracingModule.class)
+                       .bindInstance(new ServerTracingModule.Config()
+                           .withBrave(new Brave.Builder("ratpack-demo").build()))
             ))
             .handlers(handler ->
                 handler.all(ctx -> ctx.render("Hello world"))
