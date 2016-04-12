@@ -17,26 +17,12 @@ package com.example.server;
 
 import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import com.github.kristofa.brave.http.StringServiceNameProvider;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 
 class BraveModule extends AbstractModule {
-  private final String serviceName;
 
-  BraveModule(final String serviceName) {
-    this.serviceName = serviceName;
-  }
-
-  @Provides
-  public Brave brave() {
-    Brave.Builder builder = new Brave
-        .Builder(serviceName);
-    return builder
-        .build();
-  }
   @Provides
   public ServerTracer getServerTracer(final Brave brave) {
     return brave.serverTracer();
@@ -60,11 +46,6 @@ class BraveModule extends AbstractModule {
   @Provides
   public SpanNameProvider spanNameProvider() {
     return new DefaultSpanNameProvider();
-  }
-
-  @Provides
-  public ServiceNameProvider serviceNameProvider() {
-    return new StringServiceNameProvider("api-gateway");
   }
 
   @Override

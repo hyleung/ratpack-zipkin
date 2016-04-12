@@ -20,18 +20,12 @@ import ratpack.handling.HandlerDecorator;
 import ratpack.handling.Handlers;
 import ratpack.registry.Registry;
 
-import javax.inject.Inject;
-
 public class ServerTracingDecorator implements HandlerDecorator {
-  private ServerTracingHandler handler;
 
-  @Inject
-  public ServerTracingDecorator(final ServerTracingHandler handler) {
-    this.handler = handler;
-  }
 
   @Override
   public Handler decorate(final Registry serverRegistry, final Handler rest) throws Exception {
-    return Handlers.chain(this.handler, rest);
+    ServerTracingHandler serverTracingHandler = serverRegistry.get(ServerTracingHandler.class);
+    return Handlers.chain(serverTracingHandler, rest);
   }
 }
