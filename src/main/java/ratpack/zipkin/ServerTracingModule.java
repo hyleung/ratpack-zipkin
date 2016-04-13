@@ -57,8 +57,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   }
 
   @Provides
-  public SpanNameProvider spanNameProvider() {
-    return new DefaultSpanNameProvider();
+  public SpanNameProvider spanNameProvider(final Config config) {
+    return config.spanNameProvider;
   }
 
   public static Config config() {
@@ -67,12 +67,17 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
   public static class Config {
     private Brave brave;
-
+    private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private Config() {
       //no-op
     }
     public Config withBrave(final Brave brave) {
       this.brave = brave;
+      return this;
+    }
+
+    public Config withSpanNameProvider(final SpanNameProvider spanNameProvider) {
+      this.spanNameProvider = spanNameProvider;
       return this;
     }
   }
