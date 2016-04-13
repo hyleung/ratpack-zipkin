@@ -18,13 +18,15 @@ public class App {
             .registry(registry(binding ->
                 binding
                     .module(ServerTracingModule.class)
+                    .bind(HelloWorldHandler.class)
                     .bindInstance(ServerTracingModule.config()
                                                      .withBrave(new Brave.Builder("ratpack-demo")
                                                          .build()))
             ))
             .handlers(handler ->
-                handler.all(ctx -> ctx.render("Hello world"))
-            )
+                handler
+                    .get("hello", HelloWorldHandler.class)
+                    .all(ctx -> ctx.render("root")))
     ).start();
   }
 
