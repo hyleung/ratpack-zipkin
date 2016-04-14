@@ -21,8 +21,8 @@ import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
-import ratpack.zipkin.internal.RatpackServerResponseAdapter;
-import ratpack.zipkin.internal.RatpackServerRequestAdapter;
+import ratpack.zipkin.internal.ServerRequestAdapterFactory;
+import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
 import javax.inject.Inject;
 
@@ -32,25 +32,31 @@ import javax.inject.Inject;
 public class ServerTracingHandler implements Handler {
   private final ServerRequestInterceptor requestInterceptor;
   private final ServerResponseInterceptor responseInterceptor;
+  private final ServerRequestAdapterFactory requestAdapterFactory;
+  private final ServerResponseAdapterFactory responseAdapterFactory;
   private final SpanNameProvider spanNameProvider;
 
   @Inject
   public ServerTracingHandler(final ServerRequestInterceptor requestInterceptor,
                               final ServerResponseInterceptor responseInterceptor,
+                              final ServerRequestAdapterFactory requestAdapterFactory,
+                              final ServerResponseAdapterFactory responseAdapterFactory,
                               final SpanNameProvider spanNameProvider) {
     this.requestInterceptor = requestInterceptor;
     this.responseInterceptor = responseInterceptor;
+    this.requestAdapterFactory = requestAdapterFactory;
+    this.responseAdapterFactory = responseAdapterFactory;
     this.spanNameProvider = spanNameProvider;
   }
 
   @Override
   public void handle(Context ctx) throws Exception {
-    ServerRequestAdapter requestAdapter =
-        new RatpackServerRequestAdapter(spanNameProvider, ctx.getRequest());
+    ServerRequestAdapter requestAdapter = requestAdapterFactory.createAdapter(spanNameProvider,
+        ctx.getRequest());
     requestInterceptor.handle(requestAdapter);
     ctx.getResponse()
        .beforeSend(response -> responseInterceptor
-           .handle(new RatpackServerResponseAdapter(response)));
+           .handle(responseAdapterFactory.createAdapter(response)));
     ctx.next();
   }
 }

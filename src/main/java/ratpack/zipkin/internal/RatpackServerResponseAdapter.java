@@ -25,10 +25,10 @@ import java.util.Collections;
 /**
  * Implementation of {@link ServerResponseAdapter} for RatPack.
  */
-public class RatpackServerResponseAdapter implements ServerResponseAdapter {
+class RatpackServerResponseAdapter implements ServerResponseAdapter {
   private final Response response;
 
-  public RatpackServerResponseAdapter(final Response response) {
+  RatpackServerResponseAdapter(final Response response) {
     this.response = response;
   }
 

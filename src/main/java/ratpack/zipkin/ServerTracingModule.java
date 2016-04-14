@@ -19,7 +19,13 @@ import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.google.inject.Provides;
+import ratpack.func.Function;
 import ratpack.guice.ConfigurableModule;
+import ratpack.http.Request;
+import ratpack.zipkin.internal.ServerRequestAdapterFactory;
+import ratpack.zipkin.internal.ServerResponseAdapterFactory;
+
+import java.util.Collection;
 
 /**
  * Module for ZipKin distributed tracing.
@@ -29,6 +35,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   protected void configure() {
     bind(ServerTracingHandler.class);
     bind(ServerTracingDecorator.class);
+    bind(ServerRequestAdapterFactory.class);
+    bind(ServerResponseAdapterFactory.class);
   }
 
   @Provides

@@ -24,6 +24,8 @@ import ratpack.func.Action
 import ratpack.handling.Context
 import ratpack.http.Request
 import ratpack.http.Response
+import ratpack.zipkin.internal.ServerRequestAdapterFactory
+import ratpack.zipkin.internal.ServerResponseAdapterFactory
 import spock.lang.Specification
 
 /**
@@ -35,6 +37,10 @@ class ServerTracingHandlerSpec extends Specification{
 
     def ServerResponseInterceptor responseInterceptor = Mock(ServerResponseInterceptor)
 
+    def ServerRequestAdapterFactory requestAdapterFactory = Mock(ServerRequestAdapterFactory)
+
+    def ServerResponseAdapterFactory responseAdapterFactory = Mock(ServerResponseAdapterFactory)
+
     def SpanNameProvider spanNameProvider = Mock(SpanNameProvider)
 
     def Context ctx = Mock(Context)
@@ -44,7 +50,13 @@ class ServerTracingHandlerSpec extends Specification{
     ServerTracingHandler handler
 
     def setup() {
-        handler = new ServerTracingHandler(requestInterceptor, responseInterceptor, spanNameProvider)
+        handler = new ServerTracingHandler(requestInterceptor,
+                responseInterceptor,
+                requestAdapterFactory,
+                responseAdapterFactory,
+                spanNameProvider)
+        requestAdapterFactory.createAdapter(spanNameProvider, request) >> Mock(ServerRequestAdapter)
+        responseAdapterFactory.createAdapter(response) >> Mock(ServerResponseAdapter)
     }
 
     def 'Given a server request, should handle with ServerRequestInterceptor'() {

@@ -27,11 +27,11 @@ import java.util.Collections;
 /**
  * Implementation of {@link ServerRequestAdapter} for RatPack.
  */
-public class RatpackServerRequestAdapter implements ServerRequestAdapter {
+class RatpackServerRequestAdapter implements ServerRequestAdapter {
   private final SpanNameProvider spanNameProvider;
   private final HttpServerRequest request;
 
-  public RatpackServerRequestAdapter(final SpanNameProvider spanNameProvider,
+  RatpackServerRequestAdapter(final SpanNameProvider spanNameProvider,
                                      final Request request) {
     this.spanNameProvider = spanNameProvider;
     this.request = new RatpackHttpServerRequest(request);
