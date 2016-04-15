@@ -17,7 +17,6 @@ package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
-import com.github.kristofa.brave.http.HttpServerRequest;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +33,6 @@ class RatpackServerRequestAdapter implements ServerRequestAdapter {
   private final Logger logger = LoggerFactory.getLogger(RatpackServerRequestAdapter.class);
   private final SpanNameProvider spanNameProvider;
   private final Request request;
-  private final HttpServerRequest braveRequest;
   private final RequestAnnotationExtractor annotationExtractor;
 
   RatpackServerRequestAdapter(final SpanNameProvider spanNameProvider,
@@ -42,21 +40,20 @@ class RatpackServerRequestAdapter implements ServerRequestAdapter {
                               final RequestAnnotationExtractor annotationExtractor) {
     this.spanNameProvider = spanNameProvider;
     this.request = request;
-    this.braveRequest = new RatpackHttpServerRequest(request);
     this.annotationExtractor = annotationExtractor;
   }
 
   @Override
   public TraceData getTraceData() {
 
-    final String sampled = braveRequest.getHttpHeaderValue(BraveHttpHeaders.Sampled.getName());
+    final String sampled = request.getHeaders().get(BraveHttpHeaders.Sampled.getName());
     TraceData.Builder builder = TraceData.builder();
     if ("0".equals(sampled) || "false".equals(sampled)) {
       builder.sample(false);
     } else {
-      final String parentSpanId = braveRequest.getHttpHeaderValue(BraveHttpHeaders.ParentSpanId.getName());
-      final String traceId = braveRequest.getHttpHeaderValue(BraveHttpHeaders.TraceId.getName());
-      final String spanId = braveRequest.getHttpHeaderValue(BraveHttpHeaders.SpanId.getName());
+      final String parentSpanId = request.getHeaders().get(BraveHttpHeaders.ParentSpanId.getName());
+      final String traceId = request.getHeaders().get(BraveHttpHeaders.TraceId.getName());
+      final String spanId = request.getHeaders().get(BraveHttpHeaders.SpanId.getName());
       if (traceId != null && spanId != null) {
         SpanId span = getSpanId(traceId, spanId, parentSpanId);
         return TraceData.builder()
@@ -70,7 +67,7 @@ class RatpackServerRequestAdapter implements ServerRequestAdapter {
 
   @Override
   public String getSpanName() {
-    return spanNameProvider.spanName(braveRequest);
+    return spanNameProvider.spanName(new RatpackHttpServerRequest(request));
   }
 
   @Override
