@@ -1,7 +1,9 @@
 package com.example.server;
 
 import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.google.common.collect.Lists;
 import ratpack.server.RatpackServer;
 import ratpack.zipkin.ServerTracingModule;
 
@@ -24,7 +26,9 @@ public class App {
                         .config()
                         .withBrave(new Brave.Builder("ratpack-demo")
                             .build())
-                        .withSpanNameProvider(new DefaultSpanNameProvider()))
+                        .withRequestAnnotations(request ->
+                            Lists.newArrayList(KeyValueAnnotation.create("uri", request.getUri()))
+                        ))
             ))
             .handlers(handler ->
                 handler

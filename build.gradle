@@ -45,6 +45,8 @@ dependencies {
     testCompile 'org.objenesis:objenesis:2.2'
     testCompile 'com.nagternal:spock-genesis:0.4.0'
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
+    runtime 'ch.qos.logback:logback-core:1.1.7'
+    runtime 'ch.qos.logback:logback-classic:1.1.7'
 }
 
 idea {

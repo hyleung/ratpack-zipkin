@@ -43,6 +43,8 @@ class ServerTracingHandlerSpec extends Specification{
 
     def SpanNameProvider spanNameProvider = Mock(SpanNameProvider)
 
+    def RequestAnnotationExtractor requestAnnotationExtractor = Mock(RequestAnnotationExtractor)
+
     def Context ctx = Mock(Context)
     def Request request = Mock(Request)
     def Response response = Mock(Response)
@@ -54,9 +56,11 @@ class ServerTracingHandlerSpec extends Specification{
                 responseInterceptor,
                 requestAdapterFactory,
                 responseAdapterFactory,
-                spanNameProvider)
-        requestAdapterFactory.createAdapter(spanNameProvider, request) >> Mock(ServerRequestAdapter)
+                spanNameProvider,
+                requestAnnotationExtractor)
+        requestAdapterFactory.createAdapter(spanNameProvider, request, requestAnnotationExtractor) >> Mock(ServerRequestAdapter)
         responseAdapterFactory.createAdapter(response) >> Mock(ServerResponseAdapter)
+        requestAnnotationExtractor.annotationsFrom(_) >> Collections.emptyList()
     }
 
     def 'Given a server request, should handle with ServerRequestInterceptor'() {

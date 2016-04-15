@@ -35,24 +35,27 @@ public class ServerTracingHandler implements Handler {
   private final ServerRequestAdapterFactory requestAdapterFactory;
   private final ServerResponseAdapterFactory responseAdapterFactory;
   private final SpanNameProvider spanNameProvider;
+  private final RequestAnnotationExtractor requestAnnotationExtractor;
 
   @Inject
   public ServerTracingHandler(final ServerRequestInterceptor requestInterceptor,
                               final ServerResponseInterceptor responseInterceptor,
                               final ServerRequestAdapterFactory requestAdapterFactory,
                               final ServerResponseAdapterFactory responseAdapterFactory,
-                              final SpanNameProvider spanNameProvider) {
+                              final SpanNameProvider spanNameProvider,
+                              final RequestAnnotationExtractor requestAnnotationExtractor) {
     this.requestInterceptor = requestInterceptor;
     this.responseInterceptor = responseInterceptor;
     this.requestAdapterFactory = requestAdapterFactory;
     this.responseAdapterFactory = responseAdapterFactory;
     this.spanNameProvider = spanNameProvider;
+    this.requestAnnotationExtractor = requestAnnotationExtractor;
   }
 
   @Override
   public void handle(Context ctx) throws Exception {
     ServerRequestAdapter requestAdapter = requestAdapterFactory.createAdapter(spanNameProvider,
-        ctx.getRequest());
+        ctx.getRequest(), requestAnnotationExtractor);
     requestInterceptor.handle(requestAdapter);
     ctx.getResponse()
        .beforeSend(response -> responseInterceptor

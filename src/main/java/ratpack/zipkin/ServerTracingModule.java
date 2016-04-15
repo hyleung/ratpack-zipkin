@@ -26,6 +26,7 @@ import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 
 /**
  * Module for ZipKin distributed tracing.
@@ -69,6 +70,11 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     return config.spanNameProvider;
   }
 
+  @Provides
+  public RequestAnnotationExtractor requestAnnotationExtractor(final Config config) {
+    return new RequestAnnotationExtractor(config.requestAnnotationFunc);
+  }
+
   public static Config config() {
     return new Config();
   }
@@ -76,6 +82,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public static class Config {
     private Brave brave;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
+    private Function<Request, Collection<KeyValueAnnotation>> requestAnnotationFunc =
+        (request) -> Collections.emptyList();
     private Config() {
       //no-op
     }
@@ -86,6 +94,11 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     public Config withSpanNameProvider(final SpanNameProvider spanNameProvider) {
       this.spanNameProvider = spanNameProvider;
+      return this;
+    }
+
+    public Config withRequestAnnotations(final Function<Request, Collection<KeyValueAnnotation>> func) {
+      this.requestAnnotationFunc = func;
       return this;
     }
   }

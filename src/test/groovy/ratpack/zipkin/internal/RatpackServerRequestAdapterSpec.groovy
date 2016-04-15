@@ -21,6 +21,7 @@ import com.github.kristofa.brave.http.BraveHttpHeaders
 import com.github.kristofa.brave.http.SpanNameProvider
 import ratpack.http.Headers
 import ratpack.http.Request
+import ratpack.zipkin.RequestAnnotationExtractor
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -32,10 +33,11 @@ import static org.junit.Assert.assertEquals
 class RatpackServerRequestAdapterSpec extends Specification {
     def Request request = Stub(Request)
     def SpanNameProvider spanNameProvider = Stub(SpanNameProvider)
+    def RequestAnnotationExtractor extractor = Mock(RequestAnnotationExtractor)
     def Headers headers  = Stub(Headers)
     ServerRequestAdapter adapter
     def setup() {
-        adapter = new RatpackServerRequestAdapter(spanNameProvider, request)
+        adapter = new RatpackServerRequestAdapter(spanNameProvider, request, extractor)
         request.getHeaders() >> headers
     }
 
@@ -144,7 +146,15 @@ class RatpackServerRequestAdapterSpec extends Specification {
             result == spanName
     }
 
-    def 'Should return empty annotations'() {
+    def 'Should get annotations via the extractor'() {
+        when:
+            adapter.requestAnnotations()
+        then:
+            1 * extractor.annotationsFrom(request)
+    }
+    def 'Should return empty annotations if extractor throws exception'() {
+        setup:
+            extractor.annotationsFrom(_) >> new IllegalArgumentException()
         when:
             def result = adapter.requestAnnotations()
         then:
