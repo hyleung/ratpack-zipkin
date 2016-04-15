@@ -71,9 +71,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   }
 
   @Provides
-  public RequestAnnotationExtractor requestAnnotationExtractor(final Config config) {
-    return new RequestAnnotationExtractor(config.requestAnnotationFunc);
+  public Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractorFunc(final Config config) {
+    return config.requestAnnotationFunc;
   }
+
 
   public static Config config() {
     return new Config();

@@ -15,16 +15,20 @@
  */
 package ratpack.zipkin;
 
+import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import ratpack.func.Function;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
+import ratpack.http.Request;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
 import javax.inject.Inject;
+import java.util.Collection;
 
 /**
  * {@link Handler} for ZipKin tracing.
@@ -35,7 +39,7 @@ public class ServerTracingHandler implements Handler {
   private final ServerRequestAdapterFactory requestAdapterFactory;
   private final ServerResponseAdapterFactory responseAdapterFactory;
   private final SpanNameProvider spanNameProvider;
-  private final RequestAnnotationExtractor requestAnnotationExtractor;
+  private final Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor;
 
   @Inject
   public ServerTracingHandler(final ServerRequestInterceptor requestInterceptor,
@@ -43,7 +47,7 @@ public class ServerTracingHandler implements Handler {
                               final ServerRequestAdapterFactory requestAdapterFactory,
                               final ServerResponseAdapterFactory responseAdapterFactory,
                               final SpanNameProvider spanNameProvider,
-                              final RequestAnnotationExtractor requestAnnotationExtractor) {
+                              final  Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor) {
     this.requestInterceptor = requestInterceptor;
     this.responseInterceptor = responseInterceptor;
     this.requestAdapterFactory = requestAdapterFactory;

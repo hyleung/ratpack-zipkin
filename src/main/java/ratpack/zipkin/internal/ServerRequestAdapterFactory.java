@@ -15,10 +15,13 @@
  */
 package ratpack.zipkin.internal;
 
+import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import ratpack.func.Function;
 import ratpack.http.Request;
-import ratpack.zipkin.RequestAnnotationExtractor;
+
+import java.util.Collection;
 
 
 /**
@@ -36,7 +39,7 @@ public class ServerRequestAdapterFactory {
    */
   public ServerRequestAdapter createAdapter(final SpanNameProvider spanNameProvider,
                                             final Request request,
-                                            final RequestAnnotationExtractor annotationExtractor) {
+                                            final Function<Request, Collection<KeyValueAnnotation>> annotationExtractor) {
     return new RatpackServerRequestAdapter(spanNameProvider, request, annotationExtractor);
   }
 }

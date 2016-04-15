@@ -15,12 +15,14 @@
  */
 package ratpack.zipkin
 
+import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.ServerRequestAdapter
 import com.github.kristofa.brave.ServerRequestInterceptor
 import com.github.kristofa.brave.ServerResponseAdapter
 import com.github.kristofa.brave.ServerResponseInterceptor
 import com.github.kristofa.brave.http.SpanNameProvider
 import ratpack.func.Action
+import ratpack.func.Function
 import ratpack.handling.Context
 import ratpack.http.Request
 import ratpack.http.Response
@@ -43,7 +45,7 @@ class ServerTracingHandlerSpec extends Specification{
 
     def SpanNameProvider spanNameProvider = Mock(SpanNameProvider)
 
-    def RequestAnnotationExtractor requestAnnotationExtractor = Mock(RequestAnnotationExtractor)
+    def  Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor = Mock(Function)
 
     def Context ctx = Mock(Context)
     def Request request = Mock(Request)
@@ -60,7 +62,7 @@ class ServerTracingHandlerSpec extends Specification{
                 requestAnnotationExtractor)
         requestAdapterFactory.createAdapter(spanNameProvider, request, requestAnnotationExtractor) >> Mock(ServerRequestAdapter)
         responseAdapterFactory.createAdapter(response) >> Mock(ServerResponseAdapter)
-        requestAnnotationExtractor.annotationsFrom(_) >> Collections.emptyList()
+        requestAnnotationExtractor.apply(_) >> Collections.emptyList()
     }
 
     def 'Given a server request, should handle with ServerRequestInterceptor'() {
