@@ -1,0 +1,17 @@
+apply plugin: 'application'
+
+mainClassName = "com.example.server.App"
+
+run {
+    /* Pass all the properties: */
+    systemProperties System.getProperties()
+}
+
+dependencies {
+    compile project(":ratpack-zipkin")
+    compile 'io.ratpack:ratpack-guice:1.2.0'
+    compile 'org.slf4j:slf4j-api:1.7.13'
+    compile 'com.github.kristofa:brave-http:3.5.0'
+    runtime 'ch.qos.logback:logback-core:1.1.7'
+    runtime 'ch.qos.logback:logback-classic:1.1.7'
+}

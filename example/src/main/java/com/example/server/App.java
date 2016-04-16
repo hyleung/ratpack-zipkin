@@ -2,7 +2,6 @@ package com.example.server;
 
 import com.github.kristofa.brave.Brave;
 import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.google.common.collect.Lists;
 import ratpack.server.RatpackServer;
 import ratpack.zipkin.ServerTracingModule;

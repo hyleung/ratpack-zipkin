@@ -1,0 +1,17 @@
+apply plugin: "jacoco"
+
+dependencies {
+    compile 'io.ratpack:ratpack-guice:1.2.0'
+    compile 'org.slf4j:slf4j-api:1.7.13'
+    compile 'com.github.kristofa:brave-http:3.5.0'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
+    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+    testCompile 'cglib:cglib-nodep:3.2.1'
+    testCompile 'org.objenesis:objenesis:2.2'
+    testCompile 'com.nagternal:spock-genesis:0.4.0'
+    testCompile 'org.slf4j:slf4j-nop:1.7.21'
+}
+
+
+check.dependsOn jacocoTestReport

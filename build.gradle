@@ -1,8 +1,22 @@
-apply plugin: 'application'
-apply plugin: 'groovy'
-apply plugin: 'idea'
-apply plugin: "io.ratpack.ratpack-java"
-apply plugin: "jacoco"
+allprojects {
+    apply plugin: 'groovy'
+    apply plugin: 'idea'
+    apply plugin: "io.ratpack.ratpack-java"
+
+    repositories {
+        jcenter()
+    }
+    if (!JavaVersion.current().java8Compatible) {
+        throw new IllegalStateException("Must be built with Java 8 or higher")
+    }
+    idea {
+        project {
+            //use JDK 1.8 in idea
+            jdkName "1.8"
+            languageLevel "1.8"
+        }
+    }
+}
 
 buildscript {
     repositories {
@@ -13,48 +27,3 @@ buildscript {
                 'com.github.jengelman.gradle.plugins:shadow:1.2.1'
     }
 }
-repositories {
-    jcenter()
-}
-if (!JavaVersion.current().java8Compatible) {
-    throw new IllegalStateException("Must be built with Java 8 or higher")
-}
-mainClassName = "com.example.server.App"
-
-run {
-    /* Pass all the properties: */
-    systemProperties System.getProperties()
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled false
-        csv.enabled false
-        html.destination "${buildDir}/jacocoHtml"
-    }
-}
-
-dependencies {
-    compile 'io.ratpack:ratpack-guice:1.2.0'
-    compile 'org.slf4j:slf4j-api:1.7.13'
-    compile 'com.github.kristofa:brave-http:3.5.0'
-    testCompile 'junit:junit:4.12'
-    testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
-    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
-    testCompile 'cglib:cglib-nodep:3.2.1'
-    testCompile 'org.objenesis:objenesis:2.2'
-    testCompile 'com.nagternal:spock-genesis:0.4.0'
-    testCompile 'org.slf4j:slf4j-nop:1.7.21'
-    runtime 'ch.qos.logback:logback-core:1.1.7'
-    runtime 'ch.qos.logback:logback-classic:1.1.7'
-}
-
-idea {
-    project {
-        //use JDK 1.8 in idea
-        jdkName "1.8"
-        languageLevel "1.8"
-    }
-}
-
-check.dependsOn jacocoTestReport
