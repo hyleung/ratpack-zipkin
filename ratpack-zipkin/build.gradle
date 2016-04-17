@@ -14,5 +14,12 @@ dependencies {
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
 }
 
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+        html.destination "${buildDir}/jacocoHtml"
+    }
+}
 
 check.dependsOn jacocoTestReport
