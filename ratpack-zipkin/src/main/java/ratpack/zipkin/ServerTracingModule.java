@@ -18,16 +18,16 @@ package ratpack.zipkin;
 import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
-import ratpack.func.Function;
+import com.google.inject.multibindings.Multibinder;
 import ratpack.guice.ConfigurableModule;
-import ratpack.http.Request;
-import ratpack.http.Response;
+import ratpack.handling.HandlerDecorator;
+import ratpack.zipkin.internal.DefaultServerTracingHandler;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
-import java.util.Collection;
-import java.util.Collections;
+import static com.google.inject.Scopes.SINGLETON;
 
 /**
  * Module for ZipKin distributed tracing.
@@ -35,35 +35,12 @@ import java.util.Collections;
 public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.Config> {
   @Override
   protected void configure() {
-    bind(ServerTracingHandler.class);
-    bind(ServerTracingDecorator.class);
-    bind(ServerRequestAdapterFactory.class);
-    bind(ServerResponseAdapterFactory.class);
-  }
+    bind(ServerRequestAdapterFactory.class).in(SINGLETON);
+    bind(ServerResponseAdapterFactory.class).in(SINGLETON);
 
-  @Provides
-  public Brave getBrave(final Config config) {
-    return config.brave;
-  }
-
-  @Provides
-  public ServerTracer getServerTracer(final Brave brave) {
-    return brave.serverTracer();
-  }
-
-  @Provides
-  public LocalTracer localTracer(final Brave brave) {
-    return brave.localTracer();
-  }
-
-  @Provides
-  public ServerResponseInterceptor serverResponseInterceptor(final ServerTracer tracer) {
-    return new ServerResponseInterceptor(tracer);
-  }
-
-  @Provides
-  public ServerRequestInterceptor serverRequestInterceptor(final ServerTracer tracer) {
-    return new ServerRequestInterceptor(tracer);
+    bind(ServerTracingHandler.class).to(DefaultServerTracingHandler.class);
+    Provider<ServerTracingHandler> serverTracingHandlerProviderProvider = getProvider(ServerTracingHandler.class);
+    Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding().toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
   }
 
   @Provides
@@ -81,55 +58,65 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     return config.responseAnnotationFunc;
   }
 
-  /**
-   * Creates a config instance.
-   *
-   * @return a config instance.
-   */
-  public static Config config() {
-    return new Config();
+  @Provides
+  public ServerResponseInterceptor serverResponseInterceptor(final Brave brave) {
+    return new ServerResponseInterceptor(brave.serverTracer());
   }
 
-  /**
-   * Creates a config instance with a server name.
-   *
-   * Will create a Config with a {@link Brave} instance already configured.
-   *
-   * @param serviceName the service name
-   *
-   * @return the config instance
-   */
-  public static Config config(final String serviceName) {
-    return new Config().withBrave(new Brave.Builder(serviceName).build());
+  @Provides
+  public ServerRequestInterceptor serverRequestInterceptor(final Brave brave) {
+    return new ServerRequestInterceptor(brave.serverTracer());
   }
 
+  @Provides
+  public Brave getBrave(final Config config) {
+    Brave.Builder braveBuilder = new Brave.Builder(config.serviceName);
+    if (config.spanCollector != null) {
+      braveBuilder.spanCollector(config.spanCollector);
+    }
+    return braveBuilder.build();
+  }
+
+  @Provides
+  public LocalTracer localTracer(final Brave brave) {
+    return brave.localTracer();
+  }
+  
   public static class Config {
-    private Brave brave;
+    private String serviceName = "unknown";
+    private SpanCollector spanCollector;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
-
     private ResponseAnnotationExtractor responseAnnotationFunc = ResponseAnnotationExtractor.DEFAULT;
-    private Config() {
+
+    public Config() {
       //no-op
     }
-    public Config withBrave(final Brave brave) {
-      this.brave = brave;
+
+    public Config serviceName(final String serviceName) {
+      this.serviceName = serviceName;
       return this;
     }
 
-    public Config withSpanNameProvider(final SpanNameProvider spanNameProvider) {
+    public Config spanCollector(final SpanCollector spanCollector) {
+      this.spanCollector = spanCollector;
+      return this;
+    }
+
+    public Config spanNameProvider(final SpanNameProvider spanNameProvider) {
       this.spanNameProvider = spanNameProvider;
       return this;
     }
 
-    public Config withRequestAnnotations(final RequestAnnotationExtractor func) {
+    public Config requestAnnotations(final RequestAnnotationExtractor func) {
       this.requestAnnotationFunc = func;
       return this;
     }
 
-    public Config withResponseAnnotations(final ResponseAnnotationExtractor func) {
+    public Config responseAnnotations(final ResponseAnnotationExtractor func) {
       this.responseAnnotationFunc = func;
       return this;
     }
+
   }
 }

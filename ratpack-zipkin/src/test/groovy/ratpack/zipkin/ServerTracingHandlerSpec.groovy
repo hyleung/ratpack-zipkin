@@ -24,6 +24,7 @@ import ratpack.func.Action
 import ratpack.handling.Context
 import ratpack.http.Request
 import ratpack.http.Response
+import ratpack.zipkin.internal.DefaultServerTracingHandler
 import ratpack.zipkin.internal.ServerRequestAdapterFactory
 import ratpack.zipkin.internal.ServerResponseAdapterFactory
 import spock.lang.Specification
@@ -54,7 +55,7 @@ class ServerTracingHandlerSpec extends Specification{
     ServerTracingHandler handler
 
     def setup() {
-        handler = new ServerTracingHandler(requestInterceptor,
+        handler = new DefaultServerTracingHandler(requestInterceptor,
                 responseInterceptor,
                 requestAdapterFactory,
                 responseAdapterFactory,
