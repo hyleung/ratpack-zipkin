@@ -74,6 +74,9 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     if (config.spanCollector != null) {
       braveBuilder.spanCollector(config.spanCollector);
     }
+    if (config.sampler != null) {
+      braveBuilder.traceSampler(config.sampler);
+    }
     return braveBuilder.build();
   }
 
@@ -85,6 +88,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public static class Config {
     private String serviceName = "unknown";
     private SpanCollector spanCollector;
+    private Sampler sampler;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
     private ResponseAnnotationExtractor responseAnnotationFunc = ResponseAnnotationExtractor.DEFAULT;
@@ -103,6 +107,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
 
+    public Config sampler(final Sampler sampler) {
+      this.sampler = sampler;
+      return this;
+    }
     public Config spanNameProvider(final SpanNameProvider spanNameProvider) {
       this.spanNameProvider = spanNameProvider;
       return this;
