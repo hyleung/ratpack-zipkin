@@ -17,6 +17,10 @@ package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
+import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ratpack.func.Function;
 import ratpack.http.Response;
 
 import java.util.Collection;
@@ -26,21 +30,37 @@ import java.util.Collections;
  * Implementation of {@link ServerResponseAdapter} for RatPack.
  */
 class RatpackServerResponseAdapter implements ServerResponseAdapter {
+  private final Logger logger = LoggerFactory.getLogger(RatpackServerResponseAdapter.class);
   private final Response response;
+  private final Function<Response, Collection<KeyValueAnnotation>> extractor;
 
-  RatpackServerResponseAdapter(final Response response) {
+  RatpackServerResponseAdapter(final Response response,
+                               final Function<Response, Collection<KeyValueAnnotation>> extractor) {
     this.response = response;
+    this.extractor = extractor;
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public Collection<KeyValueAnnotation> responseAnnotations() {
+    Collection<KeyValueAnnotation> extractedAnnotations = Lists.newArrayList();
+    try {
+      Collection<KeyValueAnnotation> extracted = extractor.apply(response);
+      if (extracted != null) {
+        extractedAnnotations.addAll(extracted);
+      }
+    } catch (Exception e) {
+      logger.error("Failed to extract annotations from Response: {}", e);
+    }
     int httpStatus = response.getStatus().getCode();
 
     if ((httpStatus < 200) || (httpStatus > 299)) {
-      KeyValueAnnotation statusAnnotation = KeyValueAnnotation.create("http.responsecode", String.valueOf(httpStatus));
-      return Collections.singletonList(statusAnnotation);
+      KeyValueAnnotation statusAnnotation = KeyValueAnnotation
+          .create("http.responsecode", String.valueOf(httpStatus));
+      extractedAnnotations.add(statusAnnotation);
     }
-    return Collections.EMPTY_LIST;
+    logger.debug("Response annotations: {}", extractedAnnotations);
+    return extractedAnnotations;
+
   }
 }

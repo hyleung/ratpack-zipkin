@@ -15,6 +15,8 @@
  */
 package ratpack.zipkin.internal
 
+import com.github.kristofa.brave.KeyValueAnnotation
+import ratpack.func.Function
 import ratpack.http.Response
 import spock.lang.Specification
 
@@ -23,7 +25,7 @@ import spock.lang.Specification
  */
 class ServerResponseAdapterFactorySpec extends Specification {
     def Response response = Mock(Response)
-
+    def Function<Response, Collection<KeyValueAnnotation>> extractor = Stub(Function)
     def ServerResponseAdapterFactory factory;
 
     def setup() {
@@ -31,7 +33,7 @@ class ServerResponseAdapterFactorySpec extends Specification {
     }
     def 'Should build response adapter'() {
         when:
-            def adapter = factory.createAdapter( response)
+            def adapter = factory.createAdapter(response, extractor)
         then:
             adapter != null
     }

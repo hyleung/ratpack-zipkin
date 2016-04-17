@@ -22,6 +22,7 @@ import com.google.inject.Provides;
 import ratpack.func.Function;
 import ratpack.guice.ConfigurableModule;
 import ratpack.http.Request;
+import ratpack.http.Response;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
@@ -75,6 +76,11 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     return config.requestAnnotationFunc;
   }
 
+  @Provides
+  public Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractorFunc(final Config config) {
+    return config.responseAnnotationFunc;
+  }
+
 
   public static Config config() {
     return new Config();
@@ -85,6 +91,9 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private Function<Request, Collection<KeyValueAnnotation>> requestAnnotationFunc =
         (request) -> Collections.emptyList();
+
+    private Function<Response, Collection<KeyValueAnnotation>> responseAnnotationFunc =
+        (response) -> Collections.emptyList();
     private Config() {
       //no-op
     }
@@ -100,6 +109,11 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     public Config withRequestAnnotations(final Function<Request, Collection<KeyValueAnnotation>> func) {
       this.requestAnnotationFunc = func;
+      return this;
+    }
+
+    public Config withResponseAnnotations(final Function<Response, Collection<KeyValueAnnotation>> func) {
+      this.responseAnnotationFunc = func;
       return this;
     }
   }

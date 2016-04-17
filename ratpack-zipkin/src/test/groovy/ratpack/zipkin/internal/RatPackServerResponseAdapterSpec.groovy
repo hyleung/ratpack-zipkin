@@ -16,24 +16,54 @@
 
 package ratpack.zipkin.internal
 
+import static org.assertj.core.api.Assertions.assertThat
+
+import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.ServerResponseAdapter
+import ratpack.func.Function
 import ratpack.http.Response
 import ratpack.http.internal.DefaultStatus
 import spock.genesis.Gen
 import spock.lang.Specification
+
 
 /**
  * Test suite for {@link RatpackServerResponseAdapter}.
  */
 class RatpackServerResponseAdapterSpec extends Specification {
     def Response response = Stub(Response)
-
+    def Function<Response, Collection<KeyValueAnnotation>> extractor = Mock(Function)
     def ServerResponseAdapter responseAdapter
 
     def setup() {
-        responseAdapter = new RatpackServerResponseAdapter(response)
+        responseAdapter = new RatpackServerResponseAdapter(response, extractor)
     }
-
+    def 'Should include annotations from extractor function'() {
+        def expected = KeyValueAnnotation.create("foo", "bar")
+        setup:
+            extractor.apply(response) >> Collections.singleton(expected)
+        when:
+            def Collection<KeyValueAnnotation> result = responseAdapter.responseAnnotations()
+        then:
+            assertThat(result)
+                .contains(expected)
+    }
+    def 'Should return if extractor returns null'() {
+        setup:
+            extractor.apply(_) >> null
+        when:
+            def result = responseAdapter.responseAnnotations()
+        then:
+            result != null
+    }
+    def 'Should return if extractor errors'() {
+        setup:
+            extractor.apply(_) >> new IllegalArgumentException()
+        when:
+            def result = responseAdapter.responseAnnotations()
+        then:
+            result != null
+    }
     def 'Should not return response annotation for 2xx status'(int statusCode) {
         setup:
             response.getStatus() >>  DefaultStatus.of(statusCode)

@@ -27,6 +27,9 @@ public class App {
                             .build())
                         .withRequestAnnotations(request ->
                             Lists.newArrayList(KeyValueAnnotation.create("uri", request.getUri()))
+                        )
+                        .withResponseAnnotations(response ->
+                            Lists.newArrayList(KeyValueAnnotation.create("foo","bar"))
                         ))
             ))
             .handlers(handler ->

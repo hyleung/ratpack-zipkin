@@ -47,6 +47,8 @@ class ServerTracingHandlerSpec extends Specification{
 
     def  Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor = Mock(Function)
 
+    def  Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractor = Mock(Function)
+
     def Context ctx = Mock(Context)
     def Request request = Mock(Request)
     def Response response = Mock(Response)
@@ -59,7 +61,8 @@ class ServerTracingHandlerSpec extends Specification{
                 requestAdapterFactory,
                 responseAdapterFactory,
                 spanNameProvider,
-                requestAnnotationExtractor)
+                requestAnnotationExtractor,
+                responseAnnotationExtractor)
         requestAdapterFactory.createAdapter(spanNameProvider, request, requestAnnotationExtractor) >> Mock(ServerRequestAdapter)
         responseAdapterFactory.createAdapter(response) >> Mock(ServerResponseAdapter)
         requestAnnotationExtractor.apply(_) >> Collections.emptyList()

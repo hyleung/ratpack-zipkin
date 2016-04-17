@@ -24,6 +24,7 @@ import ratpack.func.Function;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
 import ratpack.http.Request;
+import ratpack.http.Response;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
@@ -40,6 +41,7 @@ public class ServerTracingHandler implements Handler {
   private final ServerResponseAdapterFactory responseAdapterFactory;
   private final SpanNameProvider spanNameProvider;
   private final Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor;
+  private final Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractor;
 
   @Inject
   public ServerTracingHandler(final ServerRequestInterceptor requestInterceptor,
@@ -47,13 +49,15 @@ public class ServerTracingHandler implements Handler {
                               final ServerRequestAdapterFactory requestAdapterFactory,
                               final ServerResponseAdapterFactory responseAdapterFactory,
                               final SpanNameProvider spanNameProvider,
-                              final  Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor) {
+                              final  Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor,
+                              final  Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractor) {
     this.requestInterceptor = requestInterceptor;
     this.responseInterceptor = responseInterceptor;
     this.requestAdapterFactory = requestAdapterFactory;
     this.responseAdapterFactory = responseAdapterFactory;
     this.spanNameProvider = spanNameProvider;
     this.requestAnnotationExtractor = requestAnnotationExtractor;
+    this.responseAnnotationExtractor = responseAnnotationExtractor;
   }
 
   @Override
@@ -63,7 +67,7 @@ public class ServerTracingHandler implements Handler {
     requestInterceptor.handle(requestAdapter);
     ctx.getResponse()
        .beforeSend(response -> responseInterceptor
-           .handle(responseAdapterFactory.createAdapter(response)));
+           .handle(responseAdapterFactory.createAdapter(response, responseAnnotationExtractor)));
     ctx.next();
   }
 }
