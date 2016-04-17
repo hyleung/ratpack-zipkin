@@ -24,6 +24,7 @@ import com.google.inject.multibindings.Multibinder;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.zipkin.internal.DefaultServerTracingHandler;
+import ratpack.zipkin.internal.RatpackServerClientLocalSpanState;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 

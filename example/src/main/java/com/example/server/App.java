@@ -2,6 +2,7 @@ package com.example.server;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.LoggingSpanCollector;
+import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.scribe.ScribeSpanCollector;
 import com.google.common.collect.Lists;
 import ratpack.guice.Guice;
@@ -21,6 +22,7 @@ public class App {
         .registry(Guice.registry(binding -> binding
             .module(ServerTracingModule.class, config -> config
                 .serviceName("ratpack-demo")
+                .sampler(Sampler.create(1f))
                 .spanCollector(scribeHost != null ? new ScribeSpanCollector(scribeHost, 9410) : new LoggingSpanCollector())
                 .requestAnnotations(request ->
                     Lists.newArrayList(KeyValueAnnotation.create("uri", request.getUri()))
