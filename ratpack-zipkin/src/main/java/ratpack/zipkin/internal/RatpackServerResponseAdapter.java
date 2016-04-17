@@ -20,11 +20,10 @@ import com.github.kristofa.brave.ServerResponseAdapter;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ratpack.func.Function;
 import ratpack.http.Response;
+import ratpack.zipkin.ResponseAnnotationExtractor;
 
 import java.util.Collection;
-import java.util.Collections;
 
 /**
  * Implementation of {@link ServerResponseAdapter} for RatPack.
@@ -32,10 +31,10 @@ import java.util.Collections;
 class RatpackServerResponseAdapter implements ServerResponseAdapter {
   private final Logger logger = LoggerFactory.getLogger(RatpackServerResponseAdapter.class);
   private final Response response;
-  private final Function<Response, Collection<KeyValueAnnotation>> extractor;
+  private final ResponseAnnotationExtractor extractor;
 
   RatpackServerResponseAdapter(final Response response,
-                               final Function<Response, Collection<KeyValueAnnotation>> extractor) {
+                               final ResponseAnnotationExtractor extractor) {
     this.response = response;
     this.extractor = extractor;
   }
@@ -45,7 +44,7 @@ class RatpackServerResponseAdapter implements ServerResponseAdapter {
   public Collection<KeyValueAnnotation> responseAnnotations() {
     Collection<KeyValueAnnotation> extractedAnnotations = Lists.newArrayList();
     try {
-      Collection<KeyValueAnnotation> extracted = extractor.apply(response);
+      Collection<KeyValueAnnotation> extracted = extractor.annotationsForRequest(response);
       if (extracted != null) {
         extractedAnnotations.addAll(extracted);
       }

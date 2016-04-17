@@ -15,9 +15,8 @@
  */
 package ratpack.zipkin.internal
 
-import com.github.kristofa.brave.KeyValueAnnotation
-import ratpack.func.Function
 import ratpack.http.Response
+import ratpack.zipkin.ResponseAnnotationExtractor
 import spock.lang.Specification
 
 /**
@@ -25,7 +24,7 @@ import spock.lang.Specification
  */
 class ServerResponseAdapterFactorySpec extends Specification {
     def Response response = Mock(Response)
-    def Function<Response, Collection<KeyValueAnnotation>> extractor = Stub(Function)
+    def ResponseAnnotationExtractor extractor = Stub(ResponseAnnotationExtractor)
     def ServerResponseAdapterFactory factory;
 
     def setup() {

@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ratpack.func.Function;
 import ratpack.http.Request;
+import ratpack.zipkin.RequestAnnotationExtractor;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -33,11 +34,11 @@ class RatpackServerRequestAdapter implements ServerRequestAdapter {
   private final Logger logger = LoggerFactory.getLogger(RatpackServerRequestAdapter.class);
   private final SpanNameProvider spanNameProvider;
   private final Request request;
-  private final Function<Request, Collection<KeyValueAnnotation>> annotationExtractor;
+  private final RequestAnnotationExtractor annotationExtractor;
 
   RatpackServerRequestAdapter(final SpanNameProvider spanNameProvider,
                               final Request request,
-                              final Function<Request, Collection<KeyValueAnnotation>> annotationExtractor) {
+                              final RequestAnnotationExtractor annotationExtractor) {
     this.spanNameProvider = spanNameProvider;
     this.request = request;
     this.annotationExtractor = annotationExtractor;
@@ -74,7 +75,7 @@ class RatpackServerRequestAdapter implements ServerRequestAdapter {
   public Collection<KeyValueAnnotation> requestAnnotations() {
     try {
       Collection<KeyValueAnnotation> annotations = annotationExtractor
-          .apply(request);
+          .annotationsForRequest(request);
       logger.debug("Request annotations: {}", annotations);
       return annotations;
     } catch (Exception e) {

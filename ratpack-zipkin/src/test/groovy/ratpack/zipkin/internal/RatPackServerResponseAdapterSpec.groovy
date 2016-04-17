@@ -16,6 +16,8 @@
 
 package ratpack.zipkin.internal
 
+import ratpack.zipkin.ResponseAnnotationExtractor
+
 import static org.assertj.core.api.Assertions.assertThat
 
 import com.github.kristofa.brave.KeyValueAnnotation
@@ -32,7 +34,7 @@ import spock.lang.Specification
  */
 class RatpackServerResponseAdapterSpec extends Specification {
     def Response response = Stub(Response)
-    def Function<Response, Collection<KeyValueAnnotation>> extractor = Mock(Function)
+    def ResponseAnnotationExtractor extractor = Mock(ResponseAnnotationExtractor)
     def ServerResponseAdapter responseAdapter
 
     def setup() {
@@ -41,7 +43,7 @@ class RatpackServerResponseAdapterSpec extends Specification {
     def 'Should include annotations from extractor function'() {
         def expected = KeyValueAnnotation.create("foo", "bar")
         setup:
-            extractor.apply(response) >> Collections.singleton(expected)
+            extractor.annotationsForRequest(response) >> Collections.singleton(expected)
         when:
             def Collection<KeyValueAnnotation> result = responseAdapter.responseAnnotations()
         then:
@@ -50,7 +52,7 @@ class RatpackServerResponseAdapterSpec extends Specification {
     }
     def 'Should return if extractor returns null'() {
         setup:
-            extractor.apply(_) >> null
+            extractor.annotationsForRequest(_) >> null
         when:
             def result = responseAdapter.responseAnnotations()
         then:
@@ -58,7 +60,7 @@ class RatpackServerResponseAdapterSpec extends Specification {
     }
     def 'Should return if extractor errors'() {
         setup:
-            extractor.apply(_) >> new IllegalArgumentException()
+            extractor.annotationsForRequest(_) >> new IllegalArgumentException()
         when:
             def result = responseAdapter.responseAnnotations()
         then:

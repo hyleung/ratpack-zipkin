@@ -19,7 +19,7 @@ import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.http.SpanNameProvider
 import ratpack.func.Function
 import ratpack.http.Request
-
+import ratpack.zipkin.RequestAnnotationExtractor
 import spock.lang.Specification
 
 /**
@@ -28,7 +28,7 @@ import spock.lang.Specification
 class ServerRequestAdapterFactorySpec extends Specification {
     def Request request = Mock(Request)
     def SpanNameProvider spanNameProvider = Mock(SpanNameProvider)
-    def Function<Request, Collection<KeyValueAnnotation>> extractor = Mock(Function)
+    def RequestAnnotationExtractor extractor = Mock(RequestAnnotationExtractor)
     def ServerRequestAdapterFactory factory;
 
     def setup() {

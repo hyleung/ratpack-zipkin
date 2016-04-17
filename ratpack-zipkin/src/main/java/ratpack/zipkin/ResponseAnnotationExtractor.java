@@ -13,29 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ratpack.zipkin.internal;
+package ratpack.zipkin;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
-import com.github.kristofa.brave.ServerResponseAdapter;
-import ratpack.func.Function;
 import ratpack.http.Response;
-import ratpack.zipkin.ResponseAnnotationExtractor;
 
 import java.util.Collection;
 
-/**
- * This class is responsible for creating {@link ServerResponseAdapter} instances.
- */
-public class ServerResponseAdapterFactory {
-  /**
-   * Create a {@link ServerResponseAdapter} instance.
-   *
-   * @param response a response
-   *
-   * @return an adapter
-   */
-  public ServerResponseAdapter createAdapter(final Response response,
-                                             final ResponseAnnotationExtractor extractor) {
-    return new RatpackServerResponseAdapter(response, extractor);
-  }
+@FunctionalInterface
+public interface ResponseAnnotationExtractor {
+  Collection<KeyValueAnnotation> annotationsForRequest(Response request);
 }

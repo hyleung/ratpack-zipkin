@@ -72,12 +72,12 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   }
 
   @Provides
-  public Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractorFunc(final Config config) {
+  public RequestAnnotationExtractor requestAnnotationExtractorFunc(final Config config) {
     return config.requestAnnotationFunc;
   }
 
   @Provides
-  public Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractorFunc(final Config config) {
+  public ResponseAnnotationExtractor responseAnnotationExtractorFunc(final Config config) {
     return config.responseAnnotationFunc;
   }
 
@@ -89,10 +89,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public static class Config {
     private Brave brave;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
-    private Function<Request, Collection<KeyValueAnnotation>> requestAnnotationFunc =
+    private RequestAnnotationExtractor requestAnnotationFunc =
         (request) -> Collections.emptyList();
 
-    private Function<Response, Collection<KeyValueAnnotation>> responseAnnotationFunc =
+    private ResponseAnnotationExtractor responseAnnotationFunc =
         (response) -> Collections.emptyList();
     private Config() {
       //no-op
@@ -107,12 +107,12 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
 
-    public Config withRequestAnnotations(final Function<Request, Collection<KeyValueAnnotation>> func) {
+    public Config withRequestAnnotations(final RequestAnnotationExtractor func) {
       this.requestAnnotationFunc = func;
       return this;
     }
 
-    public Config withResponseAnnotations(final Function<Response, Collection<KeyValueAnnotation>> func) {
+    public Config withResponseAnnotations(final ResponseAnnotationExtractor func) {
       this.responseAnnotationFunc = func;
       return this;
     }

@@ -16,14 +16,12 @@
 package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.IdConversion
-import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.ServerRequestAdapter
 import com.github.kristofa.brave.http.BraveHttpHeaders
 import com.github.kristofa.brave.http.SpanNameProvider
-import ratpack.func.Function
 import ratpack.http.Headers
 import ratpack.http.Request
-
+import ratpack.zipkin.RequestAnnotationExtractor
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -35,7 +33,7 @@ import static org.junit.Assert.assertEquals
 class RatpackServerRequestAdapterSpec extends Specification {
     def Request request = Stub(Request)
     def SpanNameProvider spanNameProvider = Stub(SpanNameProvider)
-    def Function<Request, Collection<KeyValueAnnotation>> extractor = Mock(Function)
+    def RequestAnnotationExtractor extractor = Mock(RequestAnnotationExtractor)
     def Headers headers  = Stub(Headers)
     ServerRequestAdapter adapter
     def setup() {
@@ -152,11 +150,11 @@ class RatpackServerRequestAdapterSpec extends Specification {
         when:
             adapter.requestAnnotations()
         then:
-            1 * extractor.apply(request)
+            1 * extractor.annotationsForRequest(request)
     }
     def 'Should return empty annotations if extractor throws exception'() {
         setup:
-            extractor.apply(_) >> new IllegalArgumentException()
+            extractor.annotationsForRequest(_) >> new IllegalArgumentException()
         when:
             def result = adapter.requestAnnotations()
         then:

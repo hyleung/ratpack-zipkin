@@ -40,8 +40,8 @@ public class ServerTracingHandler implements Handler {
   private final ServerRequestAdapterFactory requestAdapterFactory;
   private final ServerResponseAdapterFactory responseAdapterFactory;
   private final SpanNameProvider spanNameProvider;
-  private final Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor;
-  private final Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractor;
+  private final RequestAnnotationExtractor requestAnnotationExtractor;
+  private final ResponseAnnotationExtractor responseAnnotationExtractor;
 
   @Inject
   public ServerTracingHandler(final ServerRequestInterceptor requestInterceptor,
@@ -49,8 +49,8 @@ public class ServerTracingHandler implements Handler {
                               final ServerRequestAdapterFactory requestAdapterFactory,
                               final ServerResponseAdapterFactory responseAdapterFactory,
                               final SpanNameProvider spanNameProvider,
-                              final  Function<Request, Collection<KeyValueAnnotation>> requestAnnotationExtractor,
-                              final  Function<Response, Collection<KeyValueAnnotation>> responseAnnotationExtractor) {
+                              final RequestAnnotationExtractor requestAnnotationExtractor,
+                              final ResponseAnnotationExtractor responseAnnotationExtractor) {
     this.requestInterceptor = requestInterceptor;
     this.responseInterceptor = responseInterceptor;
     this.requestAdapterFactory = requestAdapterFactory;
