@@ -15,13 +15,9 @@
  */
 package ratpack.zipkin.internal;
 
-import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.ServerResponseAdapter;
-import ratpack.func.Function;
 import ratpack.http.Response;
 import ratpack.zipkin.ResponseAnnotationExtractor;
-
-import java.util.Collection;
 
 /**
  * This class is responsible for creating {@link ServerResponseAdapter} instances.
@@ -31,7 +27,6 @@ public class ServerResponseAdapterFactory {
    * Create a {@link ServerResponseAdapter} instance.
    *
    * @param response a response
-   *
    * @return an adapter
    */
   public ServerResponseAdapter createAdapter(final Response response,

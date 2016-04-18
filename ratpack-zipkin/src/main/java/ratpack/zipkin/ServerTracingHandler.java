@@ -20,16 +20,13 @@ import com.github.kristofa.brave.ServerRequestAdapter;
 import com.github.kristofa.brave.ServerRequestInterceptor;
 import com.github.kristofa.brave.ServerResponseInterceptor;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import ratpack.func.Function;
+import com.google.common.reflect.TypeToken;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
-import ratpack.http.Request;
-import ratpack.http.Response;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
 
 import javax.inject.Inject;
-import java.util.Collection;
 
 /**
  * {@link Handler} for ZipKin tracing.

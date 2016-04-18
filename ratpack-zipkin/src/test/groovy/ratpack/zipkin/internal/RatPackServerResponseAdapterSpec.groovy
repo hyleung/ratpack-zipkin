@@ -16,18 +16,13 @@
 
 package ratpack.zipkin.internal
 
-import ratpack.zipkin.ResponseAnnotationExtractor
-
-import static org.assertj.core.api.Assertions.assertThat
-
 import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.ServerResponseAdapter
-import ratpack.func.Function
 import ratpack.http.Response
-import ratpack.http.internal.DefaultStatus
-import spock.genesis.Gen
+import ratpack.zipkin.ResponseAnnotationExtractor
 import spock.lang.Specification
 
+import static org.assertj.core.api.Assertions.assertThat
 
 /**
  * Test suite for {@link RatpackServerResponseAdapter}.
@@ -40,67 +35,33 @@ class RatpackServerResponseAdapterSpec extends Specification {
     def setup() {
         responseAdapter = new RatpackServerResponseAdapter(response, extractor)
     }
+
     def 'Should include annotations from extractor function'() {
         def expected = KeyValueAnnotation.create("foo", "bar")
         setup:
-            extractor.annotationsForRequest(response) >> Collections.singleton(expected)
+        extractor.annotationsForResponse(response) >> Collections.singleton(expected)
         when:
-            def Collection<KeyValueAnnotation> result = responseAdapter.responseAnnotations()
+        def Collection<KeyValueAnnotation> result = responseAdapter.responseAnnotations()
         then:
-            assertThat(result)
+        assertThat(result)
                 .contains(expected)
     }
+
     def 'Should return if extractor returns null'() {
         setup:
-            extractor.annotationsForRequest(_) >> null
+        extractor.annotationsForResponse(_) >> null
         when:
-            def result = responseAdapter.responseAnnotations()
+        def result = responseAdapter.responseAnnotations()
         then:
-            result != null
+        result.isEmpty()
     }
+
     def 'Should return if extractor errors'() {
         setup:
-            extractor.annotationsForRequest(_) >> new IllegalArgumentException()
+        extractor.annotationsForResponse(_) >> new IllegalArgumentException()
         when:
-            def result = responseAdapter.responseAnnotations()
+        def result = responseAdapter.responseAnnotations()
         then:
-            result != null
-    }
-    def 'Should not return response annotation for 2xx status'(int statusCode) {
-        setup:
-            response.getStatus() >>  DefaultStatus.of(statusCode)
-        when:
-            def result = responseAdapter.responseAnnotations()
-        then:
-            result.isEmpty()
-        where:
-            statusCode << Gen.integer(200..299).take(10)
-
-    }
-
-    def 'Should return annotations for status (< 2xx)'(int statusCode) {
-        setup:
-            response.getStatus() >>  DefaultStatus.of(statusCode)
-        when:
-            def result = responseAdapter.responseAnnotations()
-        then:
-            !result.isEmpty()
-            def entry = result.find {annotation -> annotation.getKey() == "http.responsecode"}
-            entry.getValue() == statusCode.toString()
-        where:
-            statusCode << Gen.integer(100..199).take(10)
-    }
-
-    def 'Should return annotations for status (>= 3xx)'(int statusCode) {
-        setup:
-            response.getStatus() >>  DefaultStatus.of(statusCode)
-        when:
-            def result = responseAdapter.responseAnnotations()
-        then:
-            !result.isEmpty()
-            def entry = result.find {annotation -> annotation.getKey() == "http.responsecode"}
-            entry.getValue() == statusCode.toString()
-        where:
-            statusCode << Gen.integer(300..500).take(10)
+        result.isEmpty()
     }
 }

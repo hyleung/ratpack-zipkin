@@ -81,19 +81,34 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     return config.responseAnnotationFunc;
   }
 
-
+  /**
+   * Creates a config instance.
+   *
+   * @return a config instance.
+   */
   public static Config config() {
     return new Config();
+  }
+
+  /**
+   * Creates a config instance with a server name.
+   *
+   * Will create a Config with a {@link Brave} instance already configured.
+   *
+   * @param serviceName the service name
+   *
+   * @return the config instance
+   */
+  public static Config config(final String serviceName) {
+    return new Config().withBrave(new Brave.Builder(serviceName).build());
   }
 
   public static class Config {
     private Brave brave;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
-    private RequestAnnotationExtractor requestAnnotationFunc =
-        (request) -> Collections.emptyList();
+    private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
 
-    private ResponseAnnotationExtractor responseAnnotationFunc =
-        (response) -> Collections.emptyList();
+    private ResponseAnnotationExtractor responseAnnotationFunc = ResponseAnnotationExtractor.DEFAULT;
     private Config() {
       //no-op
     }

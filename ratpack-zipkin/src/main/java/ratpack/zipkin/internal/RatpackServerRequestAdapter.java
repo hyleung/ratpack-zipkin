@@ -20,7 +20,6 @@ import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ratpack.func.Function;
 import ratpack.http.Request;
 import ratpack.zipkin.RequestAnnotationExtractor;
 

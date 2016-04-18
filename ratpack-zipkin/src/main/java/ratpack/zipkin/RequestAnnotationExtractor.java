@@ -19,8 +19,11 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import ratpack.http.Request;
 
 import java.util.Collection;
+import java.util.Collections;
 
 @FunctionalInterface
 public interface RequestAnnotationExtractor {
   Collection<KeyValueAnnotation> annotationsForRequest(Request request);
+
+  RequestAnnotationExtractor DEFAULT = (request -> Collections.emptyList());
 }

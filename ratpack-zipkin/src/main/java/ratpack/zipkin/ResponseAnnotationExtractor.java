@@ -19,8 +19,20 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import ratpack.http.Response;
 
 import java.util.Collection;
+import java.util.Collections;
 
 @FunctionalInterface
 public interface ResponseAnnotationExtractor {
-  Collection<KeyValueAnnotation> annotationsForRequest(Response request);
+  Collection<KeyValueAnnotation> annotationsForResponse(Response response);
+
+  ResponseAnnotationExtractor DEFAULT = (response -> {
+    int httpStatus = response.getStatus().getCode();
+
+    if ((httpStatus < 200) || (httpStatus > 299)) {
+      KeyValueAnnotation statusAnnotation = KeyValueAnnotation
+          .create("http.responsecode", String.valueOf(httpStatus));
+      return Collections.singleton(statusAnnotation);
+    }
+    return Collections.emptyList();
+  });
 }

@@ -42,24 +42,18 @@ class RatpackServerResponseAdapter implements ServerResponseAdapter {
   @Override
   @SuppressWarnings("unchecked")
   public Collection<KeyValueAnnotation> responseAnnotations() {
-    Collection<KeyValueAnnotation> extractedAnnotations = Lists.newArrayList();
+    Collection<KeyValueAnnotation> annotations = Lists.newArrayList();
     try {
-      Collection<KeyValueAnnotation> extracted = extractor.annotationsForRequest(response);
+      Collection<KeyValueAnnotation> extracted = extractor.annotationsForResponse(response);
       if (extracted != null) {
-        extractedAnnotations.addAll(extracted);
+        annotations.addAll(extracted);
       }
     } catch (Exception e) {
       logger.error("Failed to extract annotations from Response: {}", e);
     }
-    int httpStatus = response.getStatus().getCode();
 
-    if ((httpStatus < 200) || (httpStatus > 299)) {
-      KeyValueAnnotation statusAnnotation = KeyValueAnnotation
-          .create("http.responsecode", String.valueOf(httpStatus));
-      extractedAnnotations.add(statusAnnotation);
-    }
-    logger.debug("Response annotations: {}", extractedAnnotations);
-    return extractedAnnotations;
+    logger.debug("Response annotations: {}", annotations);
+    return annotations;
 
   }
 }
