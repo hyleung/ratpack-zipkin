@@ -18,6 +18,7 @@ package ratpack.zipkin.internal;
 import com.github.kristofa.brave.ServerClientAndLocalSpanState;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.internal.Nullable;
+import com.google.common.reflect.TypeToken;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
 import org.slf4j.Logger;
@@ -113,7 +114,7 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     return registry.get(State.class);
   }
 
-  static class State {
+  private static class State {
     private Span localSpan;
     private ServerSpan serverSpan;
     private Span clientSpan;

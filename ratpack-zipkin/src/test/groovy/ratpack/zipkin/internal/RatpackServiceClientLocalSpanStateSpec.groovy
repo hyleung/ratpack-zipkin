@@ -19,8 +19,6 @@ import com.github.kristofa.brave.ServerClientAndLocalSpanState
 import com.github.kristofa.brave.ServerSpan
 import com.twitter.zipkin.gen.Endpoint
 import com.twitter.zipkin.gen.Span
-import ratpack.exec.Execution
-import ratpack.registry.MutableRegistry
 import ratpack.registry.internal.SimpleMutableRegistry
 import spock.lang.Specification
 
