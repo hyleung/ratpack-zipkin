@@ -32,7 +32,7 @@ import spock.lang.Specification
 /**
  * Test suite for {@link ServerTracingHandler}.
  */
-class ServerTracingHandlerSpec extends Specification{
+class ServerTracingHandlerSpec extends Specification {
 
     def ServerRequestInterceptor requestInterceptor = Mock(ServerRequestInterceptor)
 

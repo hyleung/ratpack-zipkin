@@ -21,11 +21,18 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
+import ratpack.exec.Execution;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
+import ratpack.server.ServerConfig;
+import ratpack.server.internal.InferringPublicAddress;
 import ratpack.zipkin.internal.DefaultServerTracingHandler;
+import ratpack.zipkin.internal.RatpackServerClientLocalSpanState;
 import ratpack.zipkin.internal.ServerRequestAdapterFactory;
 import ratpack.zipkin.internal.ServerResponseAdapterFactory;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import static com.google.inject.Scopes.SINGLETON;
 
@@ -70,7 +77,9 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
   @Provides
   public Brave getBrave(final Config config) {
-    Brave.Builder braveBuilder = new Brave.Builder(config.serviceName);
+    Brave.Builder braveBuilder = new Brave.Builder(
+        new RatpackServerClientLocalSpanState(config.serviceName, config.ipv4AsInt(), config.port)
+    );
     if (config.spanCollector != null) {
       braveBuilder.spanCollector(config.spanCollector);
     }
@@ -93,6 +102,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
     private ResponseAnnotationExtractor responseAnnotationFunc = ResponseAnnotationExtractor.DEFAULT;
 
+    private int port;
+    private InetAddress address = InetAddress.getLoopbackAddress();
     public Config() {
       //no-op
     }
@@ -125,6 +136,21 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       this.responseAnnotationFunc = func;
       return this;
     }
+
+    public Config port(final int port) {
+      this.port = port;
+      return this;
+    }
+
+    public Config address(final InetAddress address) {
+      this.address = address;
+      return this;
+    }
+
+    public int ipv4AsInt() {
+      return this.address.hashCode();
+    }
+
 
   }
 }

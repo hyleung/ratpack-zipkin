@@ -9,18 +9,25 @@ import ratpack.guice.Guice;
 import ratpack.server.RatpackServer;
 import ratpack.zipkin.ServerTracingModule;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+
 /**
  * RatPack Server.
  */
 public class App {
   public static void main(String[] args) throws Exception {
     Integer serverPort = Integer.parseInt(System.getProperty("port", "8080"));
+    String host = System.getProperty("host", "localhost");
+    InetAddress address = InetAddress.getByName(host);
     String scribeHost = System.getProperty("scribeHost");
 
     RatpackServer.start(server -> server
         .serverConfig(config -> config.port(serverPort))
         .registry(Guice.registry(binding -> binding
             .module(ServerTracingModule.class, config -> config
+                .port(serverPort)
+                .address(address)
                 .serviceName("ratpack-demo")
                 .sampler(Sampler.create(1f))
                 .spanCollector(scribeHost != null ? new ScribeSpanCollector(scribeHost, 9410) : new LoggingSpanCollector())
