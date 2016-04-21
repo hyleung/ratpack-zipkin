@@ -12,6 +12,7 @@ dependencies {
     testCompile 'org.objenesis:objenesis:2.2'
     testCompile 'com.nagternal:spock-genesis:0.4.0'
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
+    testCompile 'io.ratpack:ratpack-groovy-test:1.3.0-rc-2'
 }
 
 jacocoTestReport {
