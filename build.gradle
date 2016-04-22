@@ -2,7 +2,6 @@ allprojects {
     apply plugin: 'groovy'
     apply plugin: 'idea'
     apply plugin: "io.ratpack.ratpack-java"
-
     repositories {
         jcenter()
     }
