@@ -57,6 +57,13 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             result == serverSpan
     }
 
+    def 'Should initial server span to empty'() {
+        given:
+            def result = spanState.getCurrentServerSpan()
+        expect:
+            result == ServerSpan.EMPTY
+    }
+
     def 'Should set client span to a value'() {
         setup:
             def clientSpan = Stub(Span)

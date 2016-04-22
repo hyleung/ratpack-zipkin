@@ -80,7 +80,10 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
 
   @Override
   public ServerSpan getCurrentServerSpan() {
-    return registry.get(ServerSpanValue.class).get();
+    return registry
+        .maybeGet(ServerSpanValue.class)
+        .orElse(new ServerSpanValue(ServerSpan.EMPTY))
+        .get();
   }
 
   @Override
