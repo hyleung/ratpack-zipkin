@@ -18,11 +18,8 @@ package ratpack.zipkin.internal;
 import com.github.kristofa.brave.ServerClientAndLocalSpanState;
 import com.github.kristofa.brave.ServerSpan;
 import com.github.kristofa.brave.internal.Nullable;
-import com.google.common.reflect.TypeToken;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ratpack.exec.Execution;
 import ratpack.registry.MutableRegistry;
 
@@ -36,68 +33,64 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
 
   RatpackServerClientLocalSpanState(final String serviceName, int ip, int port, final MutableRegistry registry) {
     this.registry = registry;
-    State state = new State();
-    state.setServerEndpoint(Endpoint.create(serviceName, ip, port));
-    this.registry.add(state);
-  }
-
-  @Override
-  public Span getCurrentClientSpan() {
-    return getState().getClientSpan();
+    this.registry.add(new ServerEndpointValue(Endpoint.create(serviceName, ip, port)));
   }
 
   @Override
   public Endpoint getClientEndpoint() {
-    return getState().getClientEndpoint();
+    return registry
+        .maybeGet(ClientEndpointValue.class)
+        .orElse(new ClientEndpointValue(null))
+        .get();
   }
 
   @Override
   public void setCurrentClientSpan(final Span span) {
-    State state = getState();
-    state.setClientSpan(span);
-    putState(state);
+    registry.add(new ClientSpanValue(span));
+  }
+
+  @Override
+  public Span getCurrentClientSpan() {
+    return registry
+        .maybeGet(ClientSpanValue.class)
+        .orElse(new ClientSpanValue(null))
+        .get();
   }
 
   @Override
   public void setCurrentClientServiceName(@Nullable final String serviceName) {
-    State state = getState();
     if (serviceName == null) {
-      state.setClientEndpoint(state.getServerEndpoint());
+      registry.add(new ClientEndpointValue(registry.get(ServerEndpointValue.class).get()));
     } else {
       Endpoint serverEndPoint = getServerEndpoint();
       Endpoint endpoint = Endpoint.create(serviceName, serverEndPoint.ipv4, serverEndPoint.port);
-      state.setClientEndpoint(endpoint);
+      registry.add(new ClientEndpointValue(endpoint));
     }
-    putState(state);
   }
 
   @Override
   public Span getCurrentLocalSpan() {
-    return getState().getLocalSpan();
+    return registry.get(LocalSpanValue.class).get();
   }
 
   @Override
   public void setCurrentLocalSpan(final Span span) {
-    State state = getState();
-    state.setLocalSpan(span);
-    putState(state);
+    registry.add(new LocalSpanValue(span));
   }
 
   @Override
   public ServerSpan getCurrentServerSpan() {
-    return getState().getServerSpan();
+    return registry.get(ServerSpanValue.class).get();
   }
 
   @Override
   public Endpoint getServerEndpoint() {
-    return getState().getServerEndpoint();
+    return registry.get(ServerEndpointValue.class).get();
   }
 
   @Override
   public void setCurrentServerSpan(final ServerSpan span) {
-    State state = getState();
-    state.setServerSpan(span);
-    putState(state);
+    registry.add(new ServerSpanValue(span));
   }
 
   @Override
@@ -105,60 +98,42 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     return getCurrentServerSpan().getSample();
   }
 
-  private void putState(final State state) {
-    registry.remove(State.class);
-    registry.add(state);
-  }
-
-  private State getState() {
-    return registry.get(State.class);
-  }
-
-  private static class State {
-    private Span localSpan;
-    private ServerSpan serverSpan;
-    private Span clientSpan;
-    private Endpoint serverEndpoint;
-    private Endpoint clientEndpoint;
-
-    Span getLocalSpan() {
-      return localSpan;
-    }
-
-    void setLocalSpan(final Span localSpan) {
-      this.localSpan = localSpan;
-    }
-
-    ServerSpan getServerSpan() {
-      return serverSpan;
-    }
-
-    void setServerSpan(final ServerSpan serverSpan) {
-      this.serverSpan = serverSpan;
-    }
-
-    Span getClientSpan() {
-      return clientSpan;
-    }
-
-    void setClientSpan(final Span clientSpan) {
-      this.clientSpan = clientSpan;
-    }
-
-    Endpoint getServerEndpoint() {
-      return serverEndpoint;
-    }
-
-    void setServerEndpoint(final Endpoint serverEndpoint) {
-      this.serverEndpoint = serverEndpoint;
-    }
-
-    Endpoint getClientEndpoint() {
-      return clientEndpoint;
-    }
-
-    void setClientEndpoint(final Endpoint clientEndpoint) {
-      this.clientEndpoint = clientEndpoint;
+  private class LocalSpanValue extends TypedValue<Span> {
+    LocalSpanValue(final Span value) {
+      super(value);
     }
   }
+  private class ClientSpanValue extends TypedValue<Span> {
+    ClientSpanValue(final Span value) {
+      super(value);
+    }
+  }
+  private class ServerSpanValue extends TypedValue<ServerSpan> {
+    ServerSpanValue(final ServerSpan value) {
+      super(value);
+    }
+  }
+  private class ServerEndpointValue extends TypedValue<Endpoint> {
+    ServerEndpointValue(final Endpoint value) {
+      super(value);
+    }
+  }
+  private class ClientEndpointValue extends TypedValue<Endpoint> {
+    ClientEndpointValue(final Endpoint value) {
+      super(value);
+    }
+  }
+
+  private abstract class TypedValue<T> {
+    private T value;
+
+    TypedValue(final T value) {
+      this.value = value;
+    }
+
+    T get() {
+      return value;
+    }
+  }
+
 }

@@ -67,6 +67,12 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             result == clientSpan
     }
 
+    def 'If no client span set should return null'() {
+        given:
+            def result = spanState.getCurrentClientSpan()
+        expect:
+            result == null
+    }
 
     def 'Should get sampling from server span'() {
         setup:
@@ -99,6 +105,13 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
         then:
             result != null
             result.service_name == clientServiceName
+    }
+
+    def 'When no client service name set, should return null client endpoint'() {
+        given:
+            def result = spanState.getClientEndpoint()
+        expect:
+            result == null
     }
 
     def 'When setting client service name, should create client endpoint with server endpoint ip and port'() {
