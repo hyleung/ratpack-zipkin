@@ -23,35 +23,43 @@ import com.twitter.zipkin.gen.Span;
 import ratpack.exec.Execution;
 import ratpack.registry.MutableRegistry;
 
+import java.util.function.Supplier;
+
 
 public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSpanState  {
-  private final MutableRegistry registry;
+  private final Supplier<MutableRegistry> registry;
+  private final String serviceName;
+  private final int ip;
+  private final int port;
 
   public RatpackServerClientLocalSpanState(final String serviceName, int ip, int port) {
-    this(serviceName, ip, port, Execution.current());
+    this(serviceName, ip, port, Execution::current);
   }
 
-  RatpackServerClientLocalSpanState(final String serviceName, int ip, int port, final MutableRegistry registry) {
+  RatpackServerClientLocalSpanState(final String serviceName, int ip, int port, final Supplier<MutableRegistry> registry) {
+    this.serviceName = serviceName;
+    this.ip = ip;
+    this.port = port;
     this.registry = registry;
-    this.registry.add(new ServerEndpointValue(Endpoint.create(serviceName, ip, port)));
+    registry.get().add(new ServerEndpointValue(Endpoint.create(serviceName, ip, port)));
   }
 
   @Override
   public Endpoint getClientEndpoint() {
-    return registry
-        .maybeGet(ClientEndpointValue.class)
-        .orElse(new ClientEndpointValue(null))
-        .get();
+    return registry.get()
+                   .maybeGet(ClientEndpointValue.class)
+                   .orElse(new ClientEndpointValue(null))
+                   .get();
   }
 
   @Override
   public void setCurrentClientSpan(final Span span) {
-    registry.add(new ClientSpanValue(span));
+    registry.get().add(new ClientSpanValue(span));
   }
 
   @Override
   public Span getCurrentClientSpan() {
-    return registry
+    return registry.get()
         .maybeGet(ClientSpanValue.class)
         .orElse(new ClientSpanValue(null))
         .get();
@@ -60,27 +68,27 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
   @Override
   public void setCurrentClientServiceName(@Nullable final String serviceName) {
     if (serviceName == null) {
-      registry.add(new ClientEndpointValue(registry.get(ServerEndpointValue.class).get()));
+      registry.get().add(new ClientEndpointValue(registry.get().get(ServerEndpointValue.class).get()));
     } else {
       Endpoint serverEndPoint = getServerEndpoint();
       Endpoint endpoint = Endpoint.create(serviceName, serverEndPoint.ipv4, serverEndPoint.port);
-      registry.add(new ClientEndpointValue(endpoint));
+      registry.get().add(new ClientEndpointValue(endpoint));
     }
   }
 
   @Override
   public Span getCurrentLocalSpan() {
-    return registry.get(LocalSpanValue.class).get();
+    return registry.get().get(LocalSpanValue.class).get();
   }
 
   @Override
   public void setCurrentLocalSpan(final Span span) {
-    registry.add(new LocalSpanValue(span));
+    registry.get().add(new LocalSpanValue(span));
   }
 
   @Override
   public ServerSpan getCurrentServerSpan() {
-    return registry
+    return registry.get()
         .maybeGet(ServerSpanValue.class)
         .orElse(new ServerSpanValue(ServerSpan.EMPTY))
         .get();
@@ -88,12 +96,14 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
 
   @Override
   public Endpoint getServerEndpoint() {
-    return registry.get(ServerEndpointValue.class).get();
+    return registry.get()
+        .maybeGet(ServerEndpointValue.class)
+        .orElse(new ServerEndpointValue(Endpoint.create(serviceName, ip, port))).get();
   }
 
   @Override
   public void setCurrentServerSpan(final ServerSpan span) {
-    registry.add(new ServerSpanValue(span));
+    registry.get().add(new ServerSpanValue(span));
   }
 
   @Override

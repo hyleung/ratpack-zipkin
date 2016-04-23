@@ -27,7 +27,8 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
     def ServerClientAndLocalSpanState spanState
 
     def setup() {
-       spanState = new RatpackServerClientLocalSpanState("some-service-name", 0, 8080, SimpleMutableRegistry.newInstance())
+        def registry = SimpleMutableRegistry.newInstance()
+       spanState = new RatpackServerClientLocalSpanState("some-service-name", 0, 8080, { registry })
     }
 
     def 'Should return server endpoint'() {
@@ -38,7 +39,7 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             spanState = new RatpackServerClientLocalSpanState(expectedServiceName,
                     expectedIp,
                     expectedPort,
-                    SimpleMutableRegistry.newInstance())
+                    {SimpleMutableRegistry.newInstance()})
 
             def expected = Endpoint.create(expectedServiceName, expectedIp, expectedPort)
         when:
@@ -126,10 +127,11 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             def clientServiceName = "client-service"
             def int expectedIp = 123
             def short expectedPort = 1234
+            def registry = SimpleMutableRegistry.newInstance()
             spanState = new RatpackServerClientLocalSpanState("some-name",
                     expectedIp,
                     expectedPort,
-                    SimpleMutableRegistry.newInstance())
+                    {registry})
         when:
             spanState.setCurrentClientServiceName(clientServiceName)
             def result = spanState.getClientEndpoint()
