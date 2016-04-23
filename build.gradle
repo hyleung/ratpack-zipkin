@@ -1,7 +1,23 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'io.ratpack:ratpack-gradle:1.0.0',
+                'com.github.jengelman.gradle.plugins:shadow:1.2.1'
+    }
+}
+
+plugins {
+    id 'jacoco'
+    id 'com.github.kt3k.coveralls' version '2.6.3'
+}
+
 allprojects {
     apply plugin: 'groovy'
     apply plugin: 'idea'
     apply plugin: "io.ratpack.ratpack-java"
+    apply plugin: 'jacoco'
     repositories {
         jcenter()
     }
@@ -17,12 +33,42 @@ allprojects {
     }
 }
 
-buildscript {
-    repositories {
-        jcenter()
+
+
+// Only report code coverage for projects that are distributed
+def publishedProjects = subprojects.findAll { it.path != ':example' }
+
+task jacocoRootReport(type: JacocoReport, group: 'Coverage reports') {
+    description = 'Generates an aggregate report from all subprojects'
+    dependsOn(publishedProjects.test)
+
+    additionalSourceDirs = files(publishedProjects.sourceSets.main.allSource.srcDirs)
+    sourceDirectories = files(publishedProjects.sourceSets.main.allSource.srcDirs)
+    classDirectories = files(publishedProjects.sourceSets.main.output)
+    executionData = files(publishedProjects.jacocoTestReport.executionData)
+
+    reports {
+        html.enabled = true // human readable
+        xml.enabled = true // required by coveralls
+        html.destination = "${buildDir}/jacocoHtml"
     }
-    dependencies {
-        classpath 'io.ratpack:ratpack-gradle:1.0.0',
-                'com.github.jengelman.gradle.plugins:shadow:1.2.1'
+
+    doFirst {
+        executionData = files(executionData.findAll { it.exists() })
     }
 }
+
+coveralls {
+    sourceDirs = publishedProjects.sourceSets.main.allSource.srcDirs.flatten()
+    jacocoReportPath = "${buildDir}/reports/jacoco/jacocoRootReport/jacocoRootReport.xml"
+}
+
+tasks.coveralls {
+    group = 'Coverage reports'
+    description = 'Uploads the aggregated coverage report to Coveralls'
+
+    dependsOn jacocoRootReport
+    onlyIf { System.env.'CI' }
+}
+
+check.dependsOn "coveralls"

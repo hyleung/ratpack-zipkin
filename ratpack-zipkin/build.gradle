@@ -1,8 +1,3 @@
-plugins {
-    id 'jacoco'
-    id 'com.github.kt3k.coveralls' version '2.6.3'
-}
-
 dependencies {
     compile 'io.ratpack:ratpack-guice:1.2.0'
     compile 'org.slf4j:slf4j-api:1.7.13'
@@ -17,13 +12,3 @@ dependencies {
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
     testCompile 'io.ratpack:ratpack-groovy-test:1.3.0-rc-2'
 }
-
-jacocoTestReport {
-    reports {
-        xml.enabled true
-        csv.enabled false
-        html.destination "${buildDir}/jacocoHtml"
-    }
-}
-
-check.dependsOn jacocoTestReport
