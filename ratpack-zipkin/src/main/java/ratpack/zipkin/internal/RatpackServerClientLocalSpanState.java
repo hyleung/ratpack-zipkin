@@ -15,10 +15,12 @@
  */
 package ratpack.zipkin.internal;
 
+import com.github.kristofa.brave.IdConversion;
 import com.github.kristofa.brave.ServerClientAndLocalSpanState;
 import com.github.kristofa.brave.ServerSpan;
 import com.twitter.zipkin.gen.Endpoint;
 import com.twitter.zipkin.gen.Span;
+import org.slf4j.MDC;
 import ratpack.exec.Execution;
 import ratpack.registry.MutableRegistry;
 
@@ -26,6 +28,11 @@ import java.util.function.Supplier;
 
 
 public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSpanState  {
+  private static final String MDC_SERVER_SPAN_ID = "serverSpan.id";
+  private static final String MDC_SERVICE_NAME = "service.name";
+  private static final String MDC_TRACE_ID = "traceId";
+  private static final String MDC_PARENT_SPAN_ID = "parentSpan.id";
+
   private final Supplier<MutableRegistry> registry;
   private final Endpoint endpoint;
 
@@ -92,8 +99,16 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
   }
 
   @Override
-  public void setCurrentServerSpan(final ServerSpan span) {
-    registry.get().add(new CurrentServerSpanValue(span));
+  public void setCurrentServerSpan(final ServerSpan serverSpan) {
+    if (serverSpan != null) {
+      Span span = serverSpan.getSpan();
+      if (span != null) {
+        MDC.put(MDC_SERVICE_NAME, getServerEndpoint().service_name);
+        MDC.put(MDC_SERVER_SPAN_ID, IdConversion.convertToString(span.getId()));
+        MDC.put(MDC_TRACE_ID, IdConversion.convertToString(span.getTrace_id()));
+      }
+    }
+    registry.get().add(new CurrentServerSpanValue(serverSpan));
   }
 
   @Override
