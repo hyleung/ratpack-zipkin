@@ -116,14 +116,6 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             result.service_name == clientServiceName
     }
 
-    @Ignore
-    def 'When no client service name set, should return null client endpoint'() {
-        given:
-            def result = spanState.getClientEndpoint()
-        expect:
-            result == null
-    }
-
     def 'When setting client service name, should create client endpoint with server endpoint ip and port'() {
         setup:
             def clientServiceName = "client-service"
