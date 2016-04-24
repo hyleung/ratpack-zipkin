@@ -1,6 +1,6 @@
 # ratpack-zipkin
 
-![Build status](https://travis-ci.org/hyleung/ratpack-zipkin.svg?branch=master)
+![Build status](https://travis-ci.org/hyleung/ratpack-zipkin.svg?branch=master) [![Coverage Status](https://coveralls.io/repos/github/hyleung/ratpack-zipkin/badge.svg?branch=master)](https://coveralls.io/github/hyleung/ratpack-zipkin?branch=master)
 
 [Zipkin](https://twitter.github.io/zipkin/index.html) support for [Ratpack](http://www.ratpack.io).
 
