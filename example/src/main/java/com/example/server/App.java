@@ -5,7 +5,10 @@ import com.github.kristofa.brave.LoggingSpanCollector;
 import com.github.kristofa.brave.Sampler;
 import com.github.kristofa.brave.scribe.ScribeSpanCollector;
 import com.google.common.collect.Lists;
+import org.slf4j.MDC;
 import ratpack.guice.Guice;
+import ratpack.handling.RequestId;
+import ratpack.logging.MDCInterceptor;
 import ratpack.server.RatpackServer;
 import ratpack.zipkin.ServerTracingModule;
 
@@ -31,6 +34,7 @@ public class App {
                     Lists.newArrayList(KeyValueAnnotation.create("foo", "bar"))
                 ))
             .bind(HelloWorldHandler.class)
+            .add(MDCInterceptor.instance())
         ))
         .handlers(chain -> chain
             .get("hello", HelloWorldHandler.class)
