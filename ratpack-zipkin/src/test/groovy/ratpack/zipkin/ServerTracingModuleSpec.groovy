@@ -23,6 +23,7 @@ import org.assertj.core.util.Lists
 import ratpack.groovy.test.embed.GroovyEmbeddedApp
 import ratpack.guice.Guice
 import spock.lang.Specification
+
 class ServerTracingModuleSpec extends Specification {
 
 

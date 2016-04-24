@@ -20,6 +20,7 @@ import com.github.kristofa.brave.ServerSpan
 import com.twitter.zipkin.gen.Endpoint
 import com.twitter.zipkin.gen.Span
 import ratpack.registry.internal.SimpleMutableRegistry
+import spock.lang.Ignore
 import spock.lang.Specification
 
 import static org.assertj.core.api.Assertions.assertThat
@@ -115,6 +116,7 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             result.service_name == clientServiceName
     }
 
+    @Ignore
     def 'When no client service name set, should return null client endpoint'() {
         given:
             def result = spanState.getClientEndpoint()
