@@ -28,21 +28,27 @@ import java.util.function.Supplier;
 
 
 public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSpanState  {
-  private static final String MDC_SERVER_SPAN_ID = "serverSpan.id";
-  private static final String MDC_SERVICE_NAME = "service.name";
-  private static final String MDC_TRACE_ID = "traceId";
-  private static final String MDC_PARENT_SPAN_ID = "parentSpan.id";
+  public static final String MDC_SERVER_SPAN_ID = "serverSpan.id";
+  public static final String MDC_SERVICE_NAME = "service.name";
+  public static final String MDC_TRACE_ID = "traceId";
+  public static final String MDC_PARENT_SPAN_ID = "parentSpan.id";
 
   private final Supplier<MutableRegistry> registry;
+  private final MDCProxy mdc;
   private final Endpoint endpoint;
 
   public RatpackServerClientLocalSpanState(final String serviceName, int ip, int port) {
-    this(serviceName, ip, port, Execution::current);
+    this(serviceName, ip, port, Execution::current, new DefaultMDCProxyImpl());
   }
 
-  RatpackServerClientLocalSpanState(final String serviceName, int ip, int port, final Supplier<MutableRegistry> registry) {
+  RatpackServerClientLocalSpanState(final String serviceName,
+                                    int ip,
+                                    int port,
+                                    final Supplier<MutableRegistry> registry,
+                                    final MDCProxy mdc) {
     this.registry = registry;
     this.endpoint = Endpoint.create(serviceName, ip, port);
+    this.mdc = mdc;
   }
 
   @Override
@@ -69,6 +75,7 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
 
   @Override
   public void setCurrentClientServiceName(final String serviceName) {
+    mdc.put(MDC_SERVICE_NAME, getServerEndpoint().service_name);
     registry.get().add(new CurrentClientServiceNameValue(serviceName));
   }
 
@@ -103,9 +110,11 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     if (serverSpan != null) {
       Span span = serverSpan.getSpan();
       if (span != null) {
-        MDC.put(MDC_SERVICE_NAME, getServerEndpoint().service_name);
-        MDC.put(MDC_SERVER_SPAN_ID, IdConversion.convertToString(span.getId()));
-        MDC.put(MDC_TRACE_ID, IdConversion.convertToString(span.getTrace_id()));
+        mdc.put(MDC_SERVER_SPAN_ID, IdConversion.convertToString(span.getId()));
+        mdc.put(MDC_TRACE_ID, IdConversion.convertToString(span.getTrace_id()));
+        if (span.getParent_id() != null) {
+          mdc.put(MDC_PARENT_SPAN_ID, IdConversion.convertToString(span.getParent_id()));
+        }
       }
     }
     registry.get().add(new CurrentServerSpanValue(serverSpan));
@@ -152,4 +161,14 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     }
   }
 
+  interface MDCProxy {
+    void put(String key, String value);
+  }
+
+  private static class DefaultMDCProxyImpl implements MDCProxy {
+    @Override
+    public void put(final String key, final String value) {
+      MDC.put(key, value);
+    }
+  }
 }

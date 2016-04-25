@@ -17,19 +17,19 @@ package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.ServerClientAndLocalSpanState
 import com.github.kristofa.brave.ServerSpan
+
 import com.twitter.zipkin.gen.Endpoint
 import com.twitter.zipkin.gen.Span
 import ratpack.registry.internal.SimpleMutableRegistry
-import spock.lang.Ignore
 import spock.lang.Specification
 
 import static org.assertj.core.api.Assertions.assertThat
 class RatpackServiceClientLocalSpanStateSpec extends Specification {
     def ServerClientAndLocalSpanState spanState
-
+    def RatpackServerClientLocalSpanState.MDCProxy mdc = Mock(RatpackServerClientLocalSpanState.MDCProxy)
     def setup() {
         def registry = SimpleMutableRegistry.newInstance()
-       spanState = new RatpackServerClientLocalSpanState("some-service-name", 0, 8080, { registry })
+       spanState = new RatpackServerClientLocalSpanState("some-service-name", 0, 8080, { registry }, mdc)
     }
 
     def 'Should return server endpoint'() {
@@ -40,7 +40,8 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             spanState = new RatpackServerClientLocalSpanState(expectedServiceName,
                     expectedIp,
                     expectedPort,
-                    {SimpleMutableRegistry.newInstance()})
+                    {SimpleMutableRegistry.newInstance()},
+                    mdc)
 
             def expected = Endpoint.create(expectedServiceName, expectedIp, expectedPort)
         when:
@@ -57,6 +58,55 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             def result = spanState.getCurrentServerSpan()
         then:
             result == serverSpan
+    }
+
+    def 'When setting server span should record service name to MDC'() {
+        when:
+            spanState.setCurrentClientServiceName("some-service-name")
+        then:
+            1 * mdc.put(RatpackServerClientLocalSpanState.MDC_SERVICE_NAME, _ as String)
+    }
+
+    def 'When setting server span should record server span id to MDC'() {
+        setup:
+            def serverSpan = Stub(ServerSpan)
+        when:
+            spanState.setCurrentServerSpan(serverSpan)
+        then:
+            1 * mdc.put(RatpackServerClientLocalSpanState.MDC_SERVER_SPAN_ID, _ as String)
+    }
+
+    def 'When setting server span should record server trace id to MDC'() {
+        setup:
+            def serverSpan = Stub(ServerSpan)
+        when:
+            spanState.setCurrentServerSpan(serverSpan)
+        then:
+            1 * mdc.put(RatpackServerClientLocalSpanState.MDC_TRACE_ID, _ as String)
+    }
+
+    def 'When setting server span should record parent span id to MDC if present'() {
+        setup:
+            def serverSpan = Stub(ServerSpan)
+            def span = Stub(Span)
+            serverSpan.getSpan() >> span
+            span.getParent_id() >> new Long(1l)
+        when:
+            spanState.setCurrentServerSpan(serverSpan)
+        then:
+            1 * mdc.put(RatpackServerClientLocalSpanState.MDC_PARENT_SPAN_ID, _ as String)
+    }
+
+    def 'When setting server span should NOT record parent span id to MDC if parent id not present'() {
+        setup:
+            def serverSpan = Stub(ServerSpan)
+            def span = Stub(Span)
+            serverSpan.getSpan() >> span
+            span.getParent_id() >> null
+        when:
+            spanState.setCurrentServerSpan(serverSpan)
+        then:
+            0 * mdc.put(RatpackServerClientLocalSpanState.MDC_PARENT_SPAN_ID, _ as String)
     }
 
     def 'Should initial server span to empty'() {
@@ -125,7 +175,8 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             spanState = new RatpackServerClientLocalSpanState("some-name",
                     expectedIp,
                     expectedPort,
-                    {registry})
+                    {registry},
+                    mdc)
         when:
             spanState.setCurrentClientServiceName(clientServiceName)
             def result = spanState.getClientEndpoint()
