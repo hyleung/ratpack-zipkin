@@ -44,9 +44,6 @@ class ServerTracingModuleSpec extends Specification {
                 server.registry(Guice.registry { binding ->
                     binding.module(ServerTracingModule.class, { config ->
                         config
-                            .serviceName("some-name")
-                            .port(1234)
-                            .address(InetAddress.getLocalHost())
                             .sampler(Sampler.create(1f))
                             .spanCollector(Stub(SpanCollector))
                             .spanNameProvider(Stub(SpanNameProvider))
