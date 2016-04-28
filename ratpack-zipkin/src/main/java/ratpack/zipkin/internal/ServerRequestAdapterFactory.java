@@ -20,23 +20,30 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 import ratpack.http.Request;
 import ratpack.zipkin.RequestAnnotationExtractor;
 
+import javax.inject.Inject;
+
 
 /**
  * This class is responsible for constructing a {@link ServerRequestAdapter} instance.
  */
 public class ServerRequestAdapterFactory {
+  private final SpanNameProvider spanNameProvider;
+  private final RequestAnnotationExtractor extractor;
+
+  @Inject
+  public ServerRequestAdapterFactory(final SpanNameProvider spanNameProvider,
+                                     final RequestAnnotationExtractor extractor) {
+    this.spanNameProvider = spanNameProvider;
+    this.extractor = extractor;
+  }
 
   /**
    * Create an adapter.
    *
-   * @param spanNameProvider the span name provider
    * @param request the request
-   * @param annotationExtractor the annotation extractor
    * @return a server request adapter
    */
-  public ServerRequestAdapter createAdapter(final SpanNameProvider spanNameProvider,
-                                            final Request request,
-                                            final RequestAnnotationExtractor annotationExtractor) {
-    return new RatpackServerRequestAdapter(spanNameProvider, request, annotationExtractor);
+  public ServerRequestAdapter createAdapter(final Request request) {
+    return new RatpackServerRequestAdapter(spanNameProvider, request, extractor);
   }
 }

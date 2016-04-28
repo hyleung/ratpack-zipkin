@@ -20,35 +20,25 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     private final ServerResponseInterceptor responseInterceptor;
     private final ServerRequestAdapterFactory requestAdapterFactory;
     private final ServerResponseAdapterFactory responseAdapterFactory;
-    private final SpanNameProvider spanNameProvider;
-    private final RequestAnnotationExtractor requestAnnotationExtractor;
-    private final ResponseAnnotationExtractor responseAnnotationExtractor;
 
     @Inject
     public DefaultServerTracingHandler(final ServerRequestInterceptor requestInterceptor,
                          final ServerResponseInterceptor responseInterceptor,
                          final ServerRequestAdapterFactory requestAdapterFactory,
-                         final ServerResponseAdapterFactory responseAdapterFactory,
-                         final SpanNameProvider spanNameProvider,
-                         final RequestAnnotationExtractor requestAnnotationExtractor,
-                         final ResponseAnnotationExtractor responseAnnotationExtractor) {
+                         final ServerResponseAdapterFactory responseAdapterFactory) {
         this.requestInterceptor = requestInterceptor;
         this.responseInterceptor = responseInterceptor;
         this.requestAdapterFactory = requestAdapterFactory;
         this.responseAdapterFactory = responseAdapterFactory;
-        this.spanNameProvider = spanNameProvider;
-        this.requestAnnotationExtractor = requestAnnotationExtractor;
-        this.responseAnnotationExtractor = responseAnnotationExtractor;
     }
 
     @Override
     public void handle(Context ctx) throws Exception {
-        ServerRequestAdapter requestAdapter = requestAdapterFactory.createAdapter(spanNameProvider,
-                ctx.getRequest(), requestAnnotationExtractor);
+        ServerRequestAdapter requestAdapter = requestAdapterFactory.createAdapter(ctx.getRequest());
         requestInterceptor.handle(requestAdapter);
         ctx.getResponse()
                 .beforeSend(response -> responseInterceptor
-                        .handle(responseAdapterFactory.createAdapter(response, responseAnnotationExtractor)));
+                        .handle(responseAdapterFactory.createAdapter(response)));
         ctx.next();
     }
 }

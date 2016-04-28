@@ -28,11 +28,11 @@ class ServerResponseAdapterFactorySpec extends Specification {
     def ServerResponseAdapterFactory factory;
 
     def setup() {
-        factory = new ServerResponseAdapterFactory()
+        factory = new ServerResponseAdapterFactory(extractor)
     }
     def 'Should build response adapter'() {
         when:
-            def adapter = factory.createAdapter(response, extractor)
+            def adapter = factory.createAdapter(response)
         then:
             adapter != null
     }

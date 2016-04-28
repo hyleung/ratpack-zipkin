@@ -19,7 +19,6 @@ import com.github.kristofa.brave.ServerRequestAdapter
 import com.github.kristofa.brave.ServerRequestInterceptor
 import com.github.kristofa.brave.ServerResponseAdapter
 import com.github.kristofa.brave.ServerResponseInterceptor
-import com.github.kristofa.brave.http.SpanNameProvider
 import ratpack.func.Action
 import ratpack.handling.Context
 import ratpack.http.Request
@@ -42,12 +41,6 @@ class ServerTracingHandlerSpec extends Specification {
 
     def ServerResponseAdapterFactory responseAdapterFactory = Mock(ServerResponseAdapterFactory)
 
-    def SpanNameProvider spanNameProvider = Mock(SpanNameProvider)
-
-    def  RequestAnnotationExtractor requestAnnotationExtractor = Mock(RequestAnnotationExtractor)
-
-    def  ResponseAnnotationExtractor responseAnnotationExtractor = Mock(ResponseAnnotationExtractor)
-
     def Context ctx = Mock(Context)
     def Request request = Mock(Request)
     def Response response = Mock(Response)
@@ -58,13 +51,9 @@ class ServerTracingHandlerSpec extends Specification {
         handler = new DefaultServerTracingHandler(requestInterceptor,
                 responseInterceptor,
                 requestAdapterFactory,
-                responseAdapterFactory,
-                spanNameProvider,
-                requestAnnotationExtractor,
-                responseAnnotationExtractor)
-        requestAdapterFactory.createAdapter(spanNameProvider, request, requestAnnotationExtractor) >> Mock(ServerRequestAdapter)
-        responseAdapterFactory.createAdapter(response, responseAnnotationExtractor) >> Mock(ServerResponseAdapter)
-        requestAnnotationExtractor.annotationsForRequest(_) >> Collections.emptyList()
+                responseAdapterFactory)
+        requestAdapterFactory.createAdapter(request) >> Mock(ServerRequestAdapter)
+        responseAdapterFactory.createAdapter(response) >> Mock(ServerResponseAdapter)
     }
 
     def 'Given a server request, should handle with ServerRequestInterceptor'() {

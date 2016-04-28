@@ -19,18 +19,26 @@ import com.github.kristofa.brave.ServerResponseAdapter;
 import ratpack.http.Response;
 import ratpack.zipkin.ResponseAnnotationExtractor;
 
+import javax.inject.Inject;
+
 /**
  * This class is responsible for creating {@link ServerResponseAdapter} instances.
  */
 public class ServerResponseAdapterFactory {
+  private final ResponseAnnotationExtractor extractor;
+
+  @Inject
+  public ServerResponseAdapterFactory(final ResponseAnnotationExtractor extractor) {
+    this.extractor = extractor;
+  }
+
   /**
    * Create a {@link ServerResponseAdapter} instance.
    *
    * @param response a response
    * @return an adapter
    */
-  public ServerResponseAdapter createAdapter(final Response response,
-                                             final ResponseAnnotationExtractor extractor) {
+  public ServerResponseAdapter createAdapter(final Response response) {
     return new RatpackServerResponseAdapter(response, extractor);
   }
 }

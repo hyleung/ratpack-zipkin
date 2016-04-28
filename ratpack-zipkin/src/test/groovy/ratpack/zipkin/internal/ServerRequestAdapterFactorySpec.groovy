@@ -32,11 +32,11 @@ class ServerRequestAdapterFactorySpec extends Specification {
     def ServerRequestAdapterFactory factory;
 
     def setup() {
-        factory = new ServerRequestAdapterFactory()
+        factory = new ServerRequestAdapterFactory(spanNameProvider, extractor)
     }
     def 'Should build request adapter'() {
         when:
-            def adapter = factory.createAdapter(spanNameProvider, request, extractor)
+            def adapter = factory.createAdapter(request)
         then:
             adapter != null
     }
