@@ -16,28 +16,10 @@
 package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.ClientResponseAdapter;
-import com.github.kristofa.brave.KeyValueAnnotation;
 import ratpack.http.client.ReceivedResponse;
 
-import java.util.Collection;
-import java.util.Collections;
-
-class RatpackHttpClientResponseAdapter implements ClientResponseAdapter {
-  private final ReceivedResponse response;
-
-  RatpackHttpClientResponseAdapter(final ReceivedResponse response) {
-    this.response = response;
-  }
-
-  @Override
-  public Collection<KeyValueAnnotation> responseAnnotations() {
-    int httpStatus = response.getStatus().getCode();
-
-    if ((httpStatus < 200) || (httpStatus > 299)) {
-      KeyValueAnnotation statusAnnotation = KeyValueAnnotation
-          .create("http.responsecode", String.valueOf(httpStatus));
-      return Collections.singleton(statusAnnotation);
-    }
-    return Collections.emptyList();
+public class ClientResponseAdapterFactory {
+  public ClientResponseAdapter createAdapter(final ReceivedResponse receivedResponse) {
+    return new RatpackHttpClientResponseAdapter(receivedResponse);
   }
 }

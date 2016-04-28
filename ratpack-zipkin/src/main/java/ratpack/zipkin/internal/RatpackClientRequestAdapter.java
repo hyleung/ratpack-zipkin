@@ -29,13 +29,13 @@ import ratpack.http.client.RequestSpec;
 import java.util.Collection;
 import java.util.Collections;
 
-public class RatpackClientRequestAdapter implements ClientRequestAdapter {
+class RatpackClientRequestAdapter implements ClientRequestAdapter {
   private final RequestSpec requestSpec;
   private final ServiceNameProvider serviceNameProvider;
   private final SpanNameProvider spanNameProvider;
   private HttpClientRequest clientRequest;
 
-  public RatpackClientRequestAdapter(final RequestSpec requestSpec, final String method, final
+  RatpackClientRequestAdapter(final RequestSpec requestSpec, final String method, final
   ServiceNameProvider serviceNameProvider, final SpanNameProvider spanNameProvider) {
     this.requestSpec = requestSpec;
     this.serviceNameProvider = serviceNameProvider;
