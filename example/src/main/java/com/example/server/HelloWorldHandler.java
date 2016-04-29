@@ -16,18 +16,33 @@
 package com.example.server;
 
 import com.github.kristofa.brave.LocalTracer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
+import ratpack.http.client.ReceivedResponse;
+import ratpack.zipkin.ZipkinHttpClient;
 
 import javax.inject.Inject;
+import java.net.URI;
 
 public class HelloWorldHandler implements Handler {
+  private final Logger logger = LoggerFactory.getLogger(HelloWorldHandler.class);
   @Inject
   private LocalTracer tracer;
+  @Inject
+  private ZipkinHttpClient client;
+
   @Override
   public void handle(final Context ctx) throws Exception {
     tracer.startNewSpan("HelloWorldHandler", "handle");
-    ctx.getResponse().send("Yo dawg.");
-    tracer.finishSpan();
+    client.get(new URI("http://www.google.ca"))
+          .map(ReceivedResponse::getStatusCode)
+          .then(a -> {
+            logger.info("Response from google.ca: {}", a);
+            ctx.getResponse().send("Yo dawg.");
+            tracer.finishSpan();
+          });
+
   }
 }

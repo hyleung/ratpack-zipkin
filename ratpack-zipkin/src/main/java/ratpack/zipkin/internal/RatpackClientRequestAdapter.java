@@ -24,6 +24,7 @@ import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.internal.Nullable;
+import ratpack.func.Action;
 import ratpack.http.client.RequestSpec;
 
 import java.util.Collection;

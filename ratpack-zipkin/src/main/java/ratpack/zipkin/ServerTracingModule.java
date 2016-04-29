@@ -17,17 +17,16 @@ package ratpack.zipkin;
 
 import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.http.StringServiceNameProvider;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.server.ServerConfig;
-import ratpack.zipkin.internal.DefaultServerTracingHandler;
-import ratpack.zipkin.internal.RatpackServerClientLocalSpanState;
-import ratpack.zipkin.internal.ServerRequestAdapterFactory;
-import ratpack.zipkin.internal.ServerResponseAdapterFactory;
+import ratpack.zipkin.internal.*;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
@@ -42,9 +41,13 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   protected void configure() {
     bind(ServerRequestAdapterFactory.class).in(SINGLETON);
     bind(ServerResponseAdapterFactory.class).in(SINGLETON);
-
     bind(ServerTracingHandler.class).to(DefaultServerTracingHandler.class);
     Provider<ServerTracingHandler> serverTracingHandlerProviderProvider = getProvider(ServerTracingHandler.class);
+
+    bind(ClientRequestAdapterFactory.class).in(SINGLETON);
+    bind(ClientResponseAdapterFactory.class).in(SINGLETON);
+
+    bind(ZipkinHttpClient.class);
     Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding().toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
   }
 
@@ -72,6 +75,22 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public ServerRequestInterceptor serverRequestInterceptor(final Brave brave) {
     return new ServerRequestInterceptor(brave.serverTracer());
   }
+
+  @Provides
+  public ClientRequestInterceptor clientRequestInterceptor(final Brave brave) {
+    return new ClientRequestInterceptor(brave.clientTracer());
+  }
+
+  @Provides
+  public ClientResponseInterceptor clientResponseInterceptor(final Brave brave) {
+    return new ClientResponseInterceptor(brave.clientTracer());
+  }
+
+  @Provides
+  public ServiceNameProvider serviceNameProvider(final Config config) {
+    return new StringServiceNameProvider(config.serviceName);
+  }
+
 
   @Provides
   public Brave getBrave(final Config config, final ServerConfig serverConfig) {
