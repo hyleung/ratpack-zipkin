@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
 import ratpack.http.client.ReceivedResponse;
+import ratpack.server.ServerConfig;
 import ratpack.zipkin.ZipkinHttpClient;
 
 import javax.inject.Inject;
@@ -36,10 +37,9 @@ public class HelloWorldHandler implements Handler {
   @Override
   public void handle(final Context ctx) throws Exception {
     tracer.startNewSpan("HelloWorldHandler", "handle");
-    client.get(new URI("http://www.google.ca"))
+    client.get(new URI("http://localhost:" + (ctx.get(ServerConfig.class).getPort() + 1) + "/"))
           .map(ReceivedResponse::getStatusCode)
           .then(a -> {
-            logger.info("Response from google.ca: {}", a);
             ctx.getResponse().send("Yo dawg.");
             tracer.finishSpan();
           });

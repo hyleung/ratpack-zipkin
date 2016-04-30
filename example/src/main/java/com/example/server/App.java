@@ -40,6 +40,20 @@ public class App {
             .get("hello", HelloWorldHandler.class)
             .all(ctx -> ctx.render("root")))
     );
+
+    RatpackServer.start(server -> server
+        .serverConfig(config -> config.port(serverPort + 1))
+        .registry(Guice.registry(binding -> binding
+            .module(ServerTracingModule.class, config -> config
+                .serviceName("other-server")
+                .sampler(Sampler.create(1f))
+                .spanCollector(scribeHost != null ? new ScribeSpanCollector(scribeHost, 9410) : new LoggingSpanCollector()))
+            .bind(HelloWorldHandler.class)
+            .add(MDCInterceptor.instance())
+        ))
+        .handlers(chain -> chain
+            .all(ctx -> ctx.render("root")))
+    );
   }
 
 }
