@@ -19,6 +19,8 @@ package ratpack.zipkin.internal
 import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.ServerResponseAdapter
 import ratpack.http.Response
+import ratpack.registry.Registry
+import ratpack.registry.internal.SimpleMutableRegistry
 import ratpack.zipkin.ResponseAnnotationExtractor
 import spock.lang.Specification
 
@@ -33,35 +35,46 @@ class RatpackServerResponseAdapterSpec extends Specification {
     def ServerResponseAdapter responseAdapter
 
     def setup() {
-        responseAdapter = new RatpackServerResponseAdapter(response, extractor)
+        responseAdapter = new RatpackServerResponseAdapter(response, extractor, { Stub(Registry) })
     }
 
     def 'Should include annotations from extractor function'() {
-        def expected = KeyValueAnnotation.create("foo", "bar")
         setup:
-        extractor.annotationsForResponse(response) >> Collections.singleton(expected)
+            def expected = KeyValueAnnotation.create("foo", "bar")
+            extractor.annotationsForResponse(response) >> Collections.singleton(expected)
         when:
-        def Collection<KeyValueAnnotation> result = responseAdapter.responseAnnotations()
+            def Collection<KeyValueAnnotation> result = responseAdapter.responseAnnotations()
         then:
-        assertThat(result)
+            assertThat(result)
                 .contains(expected)
     }
 
     def 'Should return if extractor returns null'() {
         setup:
-        extractor.annotationsForResponse(_) >> null
+            extractor.annotationsForResponse(_) >> null
         when:
-        def result = responseAdapter.responseAnnotations()
+            def result = responseAdapter.responseAnnotations()
         then:
-        result.isEmpty()
+            result.isEmpty()
     }
 
     def 'Should return if extractor errors'() {
         setup:
-        extractor.annotationsForResponse(_) >> new IllegalArgumentException()
+            extractor.annotationsForResponse(_) >> new IllegalArgumentException()
         when:
-        def result = responseAdapter.responseAnnotations()
+            def result = responseAdapter.responseAnnotations()
         then:
-        result.isEmpty()
+            result.isEmpty()
+    }
+
+    def 'Should include any KeyValueAnnotations in the registry'() {
+        setup:
+            def expected = KeyValueAnnotation.create("foo", "bar")
+            def registry = SimpleMutableRegistry.single(expected)
+            responseAdapter = new RatpackServerResponseAdapter(response, extractor, { registry })
+        when:
+            def result = responseAdapter.responseAnnotations()
+        then:
+            assertThat(result).contains(expected)
     }
 }

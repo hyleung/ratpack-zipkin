@@ -16,6 +16,7 @@
 package ratpack.zipkin.internal
 
 import ratpack.http.Response
+import ratpack.registry.Registry
 import ratpack.zipkin.ResponseAnnotationExtractor
 import spock.lang.Specification
 
@@ -26,7 +27,6 @@ class ServerResponseAdapterFactorySpec extends Specification {
     def Response response = Mock(Response)
     def ResponseAnnotationExtractor extractor = Stub(ResponseAnnotationExtractor)
     def ServerResponseAdapterFactory factory;
-
     def setup() {
         factory = new ServerResponseAdapterFactory(extractor)
     }

@@ -20,10 +20,13 @@ import com.github.kristofa.brave.ServerResponseAdapter;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ratpack.exec.Execution;
 import ratpack.http.Response;
+import ratpack.registry.Registry;
 import ratpack.zipkin.ResponseAnnotationExtractor;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 /**
  * Implementation of {@link ServerResponseAdapter} for RatPack.
@@ -32,17 +35,27 @@ class RatpackServerResponseAdapter implements ServerResponseAdapter {
   private final Logger logger = LoggerFactory.getLogger(RatpackServerResponseAdapter.class);
   private final Response response;
   private final ResponseAnnotationExtractor extractor;
+  private final Supplier<Registry> registry;
+
+  RatpackServerResponseAdapter(final Response response, final ResponseAnnotationExtractor
+      extractor) {
+    this(response, extractor, Execution::current);
+  }
 
   RatpackServerResponseAdapter(final Response response,
-                               final ResponseAnnotationExtractor extractor) {
+                               final ResponseAnnotationExtractor extractor,
+                               final Supplier<Registry> registry) {
     this.response = response;
     this.extractor = extractor;
+    this.registry = registry;
   }
 
   @Override
   @SuppressWarnings("unchecked")
   public Collection<KeyValueAnnotation> responseAnnotations() {
-    Collection<KeyValueAnnotation> annotations = Lists.newArrayList();
+    Collection<KeyValueAnnotation> annotations =
+        Lists.newArrayList(registry.get().getAll(KeyValueAnnotation.class));
+
     try {
       Collection<KeyValueAnnotation> extracted = extractor.annotationsForResponse(response);
       if (extracted != null) {

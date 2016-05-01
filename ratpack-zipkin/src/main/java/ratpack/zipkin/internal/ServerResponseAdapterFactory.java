@@ -16,7 +16,9 @@
 package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.ServerResponseAdapter;
+import ratpack.exec.Execution;
 import ratpack.http.Response;
+import ratpack.registry.Registry;
 import ratpack.zipkin.ResponseAnnotationExtractor;
 
 import javax.inject.Inject;
@@ -26,9 +28,8 @@ import javax.inject.Inject;
  */
 public class ServerResponseAdapterFactory {
   private final ResponseAnnotationExtractor extractor;
-
   @Inject
-  public ServerResponseAdapterFactory(final ResponseAnnotationExtractor extractor) {
+  ServerResponseAdapterFactory(final ResponseAnnotationExtractor extractor) {
     this.extractor = extractor;
   }
 

@@ -15,6 +15,7 @@
  */
 package com.example.server;
 
+import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.LocalTracer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ public class HelloWorldHandler implements Handler {
 
   @Override
   public void handle(final Context ctx) throws Exception {
+    ctx.getExecution().add(KeyValueAnnotation.create("some-key", "some-value"));
     tracer.startNewSpan("HelloWorldHandler", "handle");
     client.get(new URI("http://localhost:" + (ctx.get(ServerConfig.class).getPort() + 1) + "/"))
           .map(ReceivedResponse::getStatusCode)
