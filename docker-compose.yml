@@ -1,11 +1,19 @@
-cassandra:
-  image: openzipkin/zipkin-cassandra:1.33.2
+# This file uses the version 1 docker-compose file format, described here:
+# https://docs.docker.com/compose/compose-file/#version-1
+#
+# It runs the zipkin-cassandra, zipkin-query, and zipkin-web containers, as well
+# as the legacy zipkin-collector container, and uses docker container linking to
+# wire the containers together.
+
+storage:
+  image: openzipkin/zipkin-cassandra:1.39.7
   ports:
     - 9042:9042
+
 # The collector process is used for legacy zipkin instrumentation, which log via
 # scribe. It can also poll kafka, when the KAFKA_ZOOKEEPER variable is set.
 collector:
-  image: openzipkin/zipkin-collector:1.33.2
+  image: openzipkin/zipkin-collector:1.39.7
   environment:
     - TRANSPORT_TYPE=scribe
     - STORAGE_TYPE=cassandra
@@ -19,11 +27,12 @@ collector:
     - 9410:9410
     - 9900:9900
   links:
-    - cassandra:storage
+    - storage
+
 # The query process services the UI, and also exposes a POST endpoint that
 # instrumentation can send trace data to.
 query:
-  image: openzipkin/zipkin-query:1.33.2
+  image: openzipkin/zipkin-query:1.39.7
   environment:
     # Remove TRANSPORT_TYPE to disable tracing
     - TRANSPORT_TYPE=http
@@ -38,9 +47,10 @@ query:
     - 9411:9411
     - 9901:9901
   links:
-    - cassandra:storage
+    - storage
+
 web:
-  image: openzipkin/zipkin-web:1.33.2
+  image: openzipkin/zipkin-web:1.39.7
   environment:
     # Remove TRANSPORT_TYPE to disable tracing
     - TRANSPORT_TYPE=http
