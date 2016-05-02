@@ -19,13 +19,13 @@ public class App {
   public static void main(String[] args) throws Exception {
     Integer serverPort = Integer.parseInt(System.getProperty("port", "8080"));
     String scribeHost = System.getProperty("scribeHost");
-
+    Float samplingPct = Float.parseFloat(System.getProperty("samplingPct","1"));
     RatpackServer.start(server -> server
         .serverConfig(config -> config.port(serverPort))
         .registry(Guice.registry(binding -> binding
             .module(ServerTracingModule.class, config -> config
                 .serviceName("ratpack-demo")
-                .sampler(Sampler.create(1f))
+                .sampler(Sampler.create(samplingPct))
                 .spanCollector(scribeHost != null ? new ScribeSpanCollector(scribeHost, 9410) : new LoggingSpanCollector())
                 .requestAnnotations(request ->
                     Lists.newArrayList(KeyValueAnnotation.create("uri", request.getUri()))
@@ -46,7 +46,7 @@ public class App {
         .registry(Guice.registry(binding -> binding
             .module(ServerTracingModule.class, config -> config
                 .serviceName("other-server")
-                .sampler(Sampler.create(1f))
+                .sampler(Sampler.create(samplingPct))
                 .spanCollector(scribeHost != null ? new ScribeSpanCollector(scribeHost, 9410) : new LoggingSpanCollector()))
             .bind(HelloWorldHandler.class)
             .add(MDCInterceptor.instance())
