@@ -45,7 +45,7 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
 
             def expected = Endpoint.create(expectedServiceName, expectedIp, expectedPort)
         when:
-            def endpoint = spanState.getServerEndpoint()
+            def endpoint = spanState.endpoint()
         then:
             assertThat(endpoint).isEqualTo(expected)
     }
@@ -58,13 +58,6 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             def result = spanState.getCurrentServerSpan()
         then:
             result == serverSpan
-    }
-
-    def 'When setting server span should record service name to MDC'() {
-        when:
-            spanState.setCurrentClientServiceName("some-service-name")
-        then:
-            1 * mdc.put(RatpackServerClientLocalSpanState.MDC_SERVICE_NAME, _ as String)
     }
 
     def 'When setting server span should record server span id to MDC'() {
@@ -153,49 +146,5 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             def result = spanState.getCurrentLocalSpan()
         then:
             result == span
-    }
-
-    def 'When setting client service name, should create client endpoint'() {
-        setup:
-            def clientServiceName = "client-service"
-        when:
-            spanState.setCurrentClientServiceName(clientServiceName)
-            def result = spanState.getClientEndpoint()
-        then:
-            result != null
-            result.service_name == clientServiceName
-    }
-
-    def 'When setting client service name, should create client endpoint with server endpoint ip and port'() {
-        setup:
-            def clientServiceName = "client-service"
-            def int expectedIp = 123
-            def short expectedPort = 1234
-            def registry = SimpleMutableRegistry.newInstance()
-            spanState = new RatpackServerClientLocalSpanState("some-name",
-                    expectedIp,
-                    expectedPort,
-                    {registry},
-                    mdc)
-        when:
-            spanState.setCurrentClientServiceName(clientServiceName)
-            def result = spanState.getClientEndpoint()
-        then:
-            result != null
-            result.service_name == clientServiceName
-            result.ipv4 == expectedIp
-            result.port == expectedPort
-    }
-
-
-    def 'Client service set to null, should return server endpoint as client endpoint'() {
-        setup:
-            def expected = spanState.getServerEndpoint()
-        when:
-            spanState.setCurrentClientServiceName(null)
-            def result = spanState.getClientEndpoint()
-        then:
-            result != null
-            result == expected
     }
 }

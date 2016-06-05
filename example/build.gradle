@@ -11,8 +11,8 @@ dependencies {
     compile project(":ratpack-zipkin")
     compile 'io.ratpack:ratpack-guice:1.2.0'
     compile 'org.slf4j:slf4j-api:1.7.13'
-    compile 'com.github.kristofa:brave-http:3.5.0'
-    compile 'com.github.kristofa:brave-spancollector-scribe:3.5.0'
+    compile 'io.zipkin.brave:brave-http:3.9.0'
+    compile 'io.zipkin.brave:brave-spancollector-scribe:3.9.0'
     runtime 'ch.qos.logback:logback-core:1.1.7'
     runtime 'ch.qos.logback:logback-classic:1.1.7'
 }

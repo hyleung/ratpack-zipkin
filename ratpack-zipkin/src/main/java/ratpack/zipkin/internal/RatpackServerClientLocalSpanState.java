@@ -52,15 +52,6 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
   }
 
   @Override
-  public Endpoint getClientEndpoint() {
-    return registry.get()
-        .maybeGet(CurrentClientServiceNameValue.class)
-        .map(TypedValue::get)
-        .map(currentClientServiceName -> Endpoint.create(currentClientServiceName, this.endpoint.ipv4, this.endpoint.port))
-        .orElse(this.endpoint);
-  }
-
-  @Override
   public void setCurrentClientSpan(final Span span) {
     registry.get().add(new CurrentClientSpanValue(span));
   }
@@ -71,12 +62,6 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
         .maybeGet(CurrentClientSpanValue.class)
         .map(TypedValue::get)
         .orElse(null);
-  }
-
-  @Override
-  public void setCurrentClientServiceName(final String serviceName) {
-    mdc.put(MDC_SERVICE_NAME, getServerEndpoint().service_name);
-    registry.get().add(new CurrentClientServiceNameValue(serviceName));
   }
 
   @Override
@@ -101,11 +86,6 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
   }
 
   @Override
-  public Endpoint getServerEndpoint() {
-    return this.endpoint;
-  }
-
-  @Override
   public void setCurrentServerSpan(final ServerSpan serverSpan) {
     if (serverSpan != null) {
       Span span = serverSpan.getSpan();
@@ -123,6 +103,11 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
   @Override
   public Boolean sample() {
     return getCurrentServerSpan().getSample();
+  }
+
+  @Override
+  public Endpoint endpoint() {
+    return endpoint;
   }
 
   private abstract class TypedValue<T> {
@@ -151,12 +136,6 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
 
   private class CurrentServerSpanValue extends TypedValue<ServerSpan> {
     CurrentServerSpanValue(final ServerSpan value) {
-      super(value);
-    }
-  }
-
-  private class CurrentClientServiceNameValue extends TypedValue<String> {
-    CurrentClientServiceNameValue(final String value) {
       super(value);
     }
   }

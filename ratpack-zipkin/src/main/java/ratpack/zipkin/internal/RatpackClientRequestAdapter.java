@@ -21,10 +21,9 @@ import com.github.kristofa.brave.KeyValueAnnotation;
 import com.github.kristofa.brave.SpanId;
 import com.github.kristofa.brave.http.BraveHttpHeaders;
 import com.github.kristofa.brave.http.HttpClientRequest;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.internal.Nullable;
-import ratpack.func.Action;
+import com.twitter.zipkin.gen.Endpoint;
 import ratpack.http.client.RequestSpec;
 
 import java.util.Collection;
@@ -32,14 +31,12 @@ import java.util.Collections;
 
 class RatpackClientRequestAdapter implements ClientRequestAdapter {
   private final RequestSpec requestSpec;
-  private final ServiceNameProvider serviceNameProvider;
   private final SpanNameProvider spanNameProvider;
   private HttpClientRequest clientRequest;
 
-  RatpackClientRequestAdapter(final RequestSpec requestSpec, final String method, final
-  ServiceNameProvider serviceNameProvider, final SpanNameProvider spanNameProvider) {
+  RatpackClientRequestAdapter(final RequestSpec requestSpec, final String method,
+                              final SpanNameProvider spanNameProvider) {
     this.requestSpec = requestSpec;
-    this.serviceNameProvider = serviceNameProvider;
     this.spanNameProvider = spanNameProvider;
     this.clientRequest = new RatpackHttpClientRequest(requestSpec, method);
   }
@@ -56,23 +53,23 @@ class RatpackClientRequestAdapter implements ClientRequestAdapter {
     } else {
       requestSpec.getHeaders().add(BraveHttpHeaders.Sampled.getName(), "1");
       requestSpec.getHeaders().add(BraveHttpHeaders.TraceId.getName(),
-          IdConversion.convertToString(spanId.getTraceId()));
+          IdConversion.convertToString(spanId.traceId));
       requestSpec.getHeaders().add(BraveHttpHeaders.SpanId.getName(),
-          IdConversion.convertToString(spanId.getSpanId()));
-      if (spanId.getParentSpanId() != null) {
+          IdConversion.convertToString(spanId.spanId));
+      if (spanId.nullableParentId() != null) {
         requestSpec.getHeaders().add(BraveHttpHeaders.ParentSpanId.getName(),
-            IdConversion.convertToString(spanId.getParentSpanId()));
+            IdConversion.convertToString(spanId.parentId));
       }
     }
   }
 
   @Override
-  public String getClientServiceName() {
-    return serviceNameProvider.serviceName(clientRequest);
+  public Collection<KeyValueAnnotation> requestAnnotations() {
+    return Collections.singletonList(KeyValueAnnotation.create("http.uri", requestSpec.getUrl().toString()));
   }
 
   @Override
-  public Collection<KeyValueAnnotation> requestAnnotations() {
-    return Collections.singletonList(KeyValueAnnotation.create("http.uri", requestSpec.getUrl().toString()));
+  public Endpoint serverAddress() {
+    return null;
   }
 }

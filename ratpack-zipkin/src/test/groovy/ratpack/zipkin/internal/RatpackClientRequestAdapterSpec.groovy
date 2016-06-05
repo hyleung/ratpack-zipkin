@@ -19,7 +19,6 @@ import com.github.kristofa.brave.ClientRequestAdapter
 import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.SpanId
 import com.github.kristofa.brave.http.HttpClientRequest
-import com.github.kristofa.brave.http.ServiceNameProvider
 import com.github.kristofa.brave.http.SpanNameProvider
 import ratpack.http.MutableHeaders
 import ratpack.http.client.RequestSpec
@@ -33,14 +32,13 @@ import static org.assertj.core.api.Assertions.assertThat
  * Behaviour is based on source for {@link com.github.kristofa.brave.http.HttpClientRequestAdapter}.
  */
 class RatpackClientRequestAdapterSpec extends Specification {
-    def ServiceNameProvider serviceNameProvider = Stub(ServiceNameProvider)
     def SpanNameProvider spanNameProvider = Stub(SpanNameProvider)
     def RequestSpec requestSpec = Mock(RequestSpec)
     def MutableHeaders headers = Mock(MutableHeaders)
     def ClientRequestAdapter adapter
 
     def setup() {
-        adapter = new RatpackClientRequestAdapter(requestSpec, "GET", serviceNameProvider, spanNameProvider)
+        adapter = new RatpackClientRequestAdapter(requestSpec, "GET", spanNameProvider)
         requestSpec.getHeaders() >> headers
     }
 
@@ -50,14 +48,6 @@ class RatpackClientRequestAdapterSpec extends Specification {
             spanNameProvider.spanName(_ as HttpClientRequest) >> expected
         expect:
             adapter.getSpanName() == expected
-    }
-
-    def 'Should get client service name from provider'() {
-        given:
-            def expected = "some-service-name"
-            serviceNameProvider.serviceName(_ as HttpClientRequest) >> expected
-        expect:
-            adapter.getClientServiceName() == expected
     }
 
     def 'Should return uri in annotations'() {
@@ -79,14 +69,17 @@ class RatpackClientRequestAdapterSpec extends Specification {
 
     def 'When span id is NOT null, should add "X-B3-Sampled" header with value 1'() {
         when:
-            adapter.addSpanIdToRequest(Mock(SpanId))
+            adapter.addSpanIdToRequest(SpanId.builder()
+                    .spanId(1l)
+                    .traceId(1l)
+                    .sampled(true).build())
         then:
             1 * headers.add("X-B3-Sampled", "1")
     }
 
     def 'When span id present, should add "X-B3-SpanId" header'() {
         setup:
-            def spanId = SpanId.create(1l, 2l, null)
+            def spanId = SpanId.builder().spanId (1l).build()
         when:
             adapter.addSpanIdToRequest(spanId)
         then:
@@ -95,25 +88,38 @@ class RatpackClientRequestAdapterSpec extends Specification {
 
     def 'When span id present, should add "X-B3-TraceId" header'() {
         setup:
-            def spanId = SpanId.create(1l, 2l, null)
+            def spanId = SpanId.builder().spanId (1l).build()
         when:
             adapter.addSpanIdToRequest(spanId)
         then:
             1 * headers.add("X-B3-TraceId", _ as String)
     }
 
-    def 'When parent span id present, should add "X-B3-ParentSpanId" header'() {
+    def 'When span is NOT a root span and parent span id present, should add "X-B3-ParentSpanId" header'() {
         setup:
-            def spanId = SpanId.create(1l, 2l, new Long(1l))
+            //logic for identifying non-root spans is in ths SpanId class.
+            //here, we set up a non-root span by making the traceId
+            //different than the spanId
+            def spanId = SpanId.builder()
+                    .traceId(1l)
+                    .spanId(2l)
+                    .parentId(1l)
+                    .build()
         when:
             adapter.addSpanIdToRequest(spanId)
         then:
             1 * headers.add("X-B3-ParentSpanId", _ as String)
     }
 
-    def 'When parent span id NOT present, should NOT add "X-B3-ParentSpanId" header'() {
+    def 'When span is a root span should NOT add "X-B3-ParentSpanId" header'() {
         setup:
-            def spanId = SpanId.create(1l, 2l, null)
+            //Set up a root span by making the traceId, parentId
+            //and spanId the same
+            def spanId = SpanId.builder()
+                    .spanId(1l)
+                    .traceId(1l)
+                    .parentId(1l)
+                    .build()
         when:
             adapter.addSpanIdToRequest(spanId)
         then:

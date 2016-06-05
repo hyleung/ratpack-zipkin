@@ -17,9 +17,7 @@ package ratpack.zipkin;
 
 import com.github.kristofa.brave.*;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.ServiceNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
-import com.github.kristofa.brave.http.StringServiceNameProvider;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
@@ -85,12 +83,6 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public ClientResponseInterceptor clientResponseInterceptor(final Brave brave) {
     return new ClientResponseInterceptor(brave.clientTracer());
   }
-
-  @Provides
-  public ServiceNameProvider serviceNameProvider(final Config config) {
-    return new StringServiceNameProvider(config.serviceName);
-  }
-
 
   @Provides
   public Brave getBrave(final Config config, final ServerConfig serverConfig) {
