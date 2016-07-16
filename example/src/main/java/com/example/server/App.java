@@ -17,7 +17,7 @@ import ratpack.zipkin.ServerTracingModule;
  */
 public class App {
   public static void main(String[] args) throws Exception {
-    Integer serverPort = Integer.parseInt(System.getProperty("port", "8080"));
+    Integer serverPort = Integer.parseInt(System.getProperty("port", "8081"));
     String scribeHost = System.getProperty("scribeHost");
     Float samplingPct = Float.parseFloat(System.getProperty("samplingPct","1"));
     RatpackServer.start(server -> server

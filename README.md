@@ -25,3 +25,19 @@ RatpackServer.start(server -> server
 ```
 
 This should add a `HandlerDecorator` that adds server send (SS) and server receive (SS) tracing using the default settings.
+
+## Starting the example service(s)
+
+Start the Zipkin stack using docker-compose:
+
+```
+cd docker-zipkin
+docker-compose up
+```
+
+
+Start ther Ratback example service:
+
+```
+gradle :example:run -DscribeHost=localhost
+```
