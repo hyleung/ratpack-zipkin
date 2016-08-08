@@ -1,5 +1,5 @@
 dependencies {
-    compile 'io.ratpack:ratpack-guice:1.2.0'
+    compile 'io.ratpack:ratpack-guice:1.3.3'
     compile 'org.slf4j:slf4j-api:1.7.13'
     compile 'io.zipkin.brave:brave-http:3.9.0'
     testCompile 'junit:junit:4.12'
@@ -10,5 +10,5 @@ dependencies {
     testCompile 'org.objenesis:objenesis:2.2'
     testCompile 'com.nagternal:spock-genesis:0.4.0'
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
-    testCompile 'io.ratpack:ratpack-groovy-test:1.3.0-rc-2'
+    testCompile 'io.ratpack:ratpack-groovy-test:1.3.3'
 }
