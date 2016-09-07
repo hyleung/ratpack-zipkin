@@ -17,8 +17,7 @@ package ratpack.zipkin;
 
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.netty.buffer.ByteBufAllocator;
 import ratpack.exec.Promise;
 import ratpack.func.Action;
 import ratpack.http.client.HttpClient;
@@ -30,6 +29,7 @@ import ratpack.zipkin.internal.ClientResponseAdapterFactory;
 
 import javax.inject.Inject;
 import java.net.URI;
+import java.time.Duration;
 
 /**
  * Decorator that adds Zipkin client logging around {@link HttpClient}.
@@ -64,6 +64,31 @@ public class ZipkinHttpClient implements HttpClient {
   @Override
   public Promise<ReceivedResponse> get(final URI uri) {
     return get(uri, Action.noop());
+  }
+
+  @Override
+  public ByteBufAllocator getByteBufAllocator() {
+    return delegate.getByteBufAllocator();
+  }
+
+  @Override
+  public int getPoolSize() {
+    return delegate.getPoolSize();
+  }
+
+  @Override
+  public Duration getReadTimeout() {
+    return delegate.getReadTimeout();
+  }
+
+  @Override
+  public int getMaxContentLength() {
+    return delegate.getMaxContentLength();
+  }
+
+  @Override
+  public void close() {
+    delegate.close();
   }
 
   @Override
