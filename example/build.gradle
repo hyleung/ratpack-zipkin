@@ -9,11 +9,11 @@ run {
 
 dependencies {
     compile project(":ratpack-zipkin")
-    compile 'io.ratpack:ratpack-guice:1.3.3'
+    compile 'io.ratpack:ratpack-guice:1.4.1'
     compile 'org.slf4j:slf4j-api:1.7.13'
-    compile 'io.zipkin.brave:brave-http:3.9.0'
-    compile 'io.zipkin.brave:brave-spancollector-scribe:3.9.0'
-    compile 'io.zipkin.brave:brave-spancollector-kafka:3.9.0'
+    compile 'io.zipkin.brave:brave-http:3.10.0'
+    compile 'io.zipkin.brave:brave-spancollector-scribe:3.10.0'
+    compile 'io.zipkin.brave:brave-spancollector-kafka:3.10.0'
     runtime 'ch.qos.logback:logback-core:1.1.7'
     runtime 'ch.qos.logback:logback-classic:1.1.7'
 }
