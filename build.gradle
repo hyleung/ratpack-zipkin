@@ -16,8 +16,9 @@ plugins {
 allprojects {
     apply plugin: 'groovy'
     apply plugin: 'idea'
-    apply plugin: "io.ratpack.ratpack-java"
     apply plugin: 'jacoco'
+    apply plugin: 'maven'
+    apply plugin: 'signing'
     repositories {
         jcenter()
     }
@@ -33,6 +34,17 @@ allprojects {
     }
 }
 
+signing {
+    sign configurations.archives
+}
+
+version = "1.0.0-SNAPSHOT"
+
+/**
+ * Set the credentials from ENV variables.
+ */
+def repoUserName = System.getenv("SONATYPE_USER")
+def repoPassword = System.getenv("SONATYPE_PASSWORD")
 
 
 // Only report code coverage for projects that are distributed

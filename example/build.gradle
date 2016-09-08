@@ -1,4 +1,5 @@
 apply plugin: 'application'
+apply plugin: "io.ratpack.ratpack-java"
 
 mainClassName = "com.example.server.App"
 
