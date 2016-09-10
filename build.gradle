@@ -2,70 +2,140 @@ buildscript {
     repositories {
         jcenter()
     }
-    dependencies {
-        classpath 'io.ratpack:ratpack-gradle:1.4.1',
-                'com.github.jengelman.gradle.plugins:shadow:1.2.1'
-    }
 }
 
 plugins {
     id 'jacoco'
-    id 'com.github.kt3k.coveralls' version '2.6.3'
+        id 'com.github.kt3k.coveralls' version '2.6.3'
 }
 
-allprojects {
-    apply plugin: 'groovy'
-    apply plugin: 'idea'
-    apply plugin: 'jacoco'
+apply plugin: 'groovy'
+apply plugin: 'idea'
+apply plugin: 'jacoco'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+version = "1.0.0-SNAPSHOT"
+
+//Only target Java 8
+if (!JavaVersion.current().java8Compatible) {
+    throw new IllegalStateException("Must be built with Java 8 or higher")
+}
+
+//IntelliJ settings
+idea {
+    project {
+        //use JDK 1.8 in idea
+        jdkName "1.8"
+        languageLevel "1.8"
+    }
+}
+
+//Dependencies
+repositories {
+    jcenter()
+}
+dependencies {
+    compile 'io.ratpack:ratpack-guice:1.4.1'
+    compile 'org.slf4j:slf4j-api:1.7.13'
+    compile 'io.zipkin.brave:brave-http:3.10.0'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.assertj:assertj-core:3.4.1'
+    testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
+    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+    testCompile 'cglib:cglib-nodep:3.2.1'
+    testCompile 'org.objenesis:objenesis:2.2'
+    testCompile 'com.nagternal:spock-genesis:0.4.0'
+    testCompile 'org.slf4j:slf4j-nop:1.7.21'
+    testCompile 'io.ratpack:ratpack-groovy-test:1.4.1'
+}
+
+//Artifacts
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+//Artifact deployment
+
+/**
+ * Set the credentials from ENV variables.
+ */
+def repoUserName = System.getenv("SONATYPE_USER")
+def repoPassword = System.getenv("SONATYPE_PASSWORD")
+
+uploadArchives {
     repositories {
-        jcenter()
-    }
-    if (!JavaVersion.current().java8Compatible) {
-        throw new IllegalStateException("Must be built with Java 8 or higher")
-    }
-    idea {
-        project {
-            //use JDK 1.8 in idea
-            jdkName "1.8"
-            languageLevel "1.8"
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
+                authentication(userName: "${repoUserName}", password: "${repoPassword}")
+            }
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
+                authentication(userName: "${repoUserName}", password: "${repoPassword}")
+            }
+            //configuration = configurations.deployerJars
+            pom.project {
+                name 'ratpack-zipkin'
+                packaging 'jar'
+                description 'Zipkin support for Ratpack'
+                url 'https://github.com/hyleung/ratpack-zipkin'
+                scm {
+                    url "https://github.com/hyleung/ratpack-zipkin.git";
+                    connection "scm:git:git://github.com/hyleung/ratpack-zipkin.git";
+                    developerConnection "scm:git:git@github.com:hyleung/ratpack-zipkin.git";
+                }
+                developers {
+                    developer {
+                        id "hyleung";
+                        name "Ho Yan Leung";
+                        email "hy.leung@gmail.com";
+                    }
+                }
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution 'repo'
+                    }
+                }
+            }
+            pom.groupId = 'com.github.hyleung'
+            pom.artifactId = 'ratpack-zipkin'
         }
     }
 }
 
-
-// Only report code coverage for projects that are distributed
-def publishedProjects = subprojects.findAll { it.path != ':example' }
-
-task jacocoRootReport(type: JacocoReport, group: 'Coverage reports') {
-    description = 'Generates an aggregate report from all subprojects'
-    dependsOn(publishedProjects.test)
-
-    additionalSourceDirs = files(publishedProjects.sourceSets.main.allSource.srcDirs)
-    sourceDirectories = files(publishedProjects.sourceSets.main.allSource.srcDirs)
-    classDirectories = files(publishedProjects.sourceSets.main.output)
-    executionData = files(publishedProjects.jacocoTestReport.executionData)
-
+//Coverage
+jacocoTestReport {
     reports {
-        html.enabled = true // human readable
-        xml.enabled = true // required by coveralls
-        html.destination = "${buildDir}/jacocoHtml"
-    }
-
-    doFirst {
-        executionData = files(executionData.findAll { it.exists() })
+        xml.enabled = true
+        html.enabled = true
     }
 }
-
 coveralls {
-    sourceDirs = publishedProjects.sourceSets.main.allSource.srcDirs.flatten()
-    jacocoReportPath = "${buildDir}/reports/jacoco/jacocoRootReport/jacocoRootReport.xml"
+    jacocoReportPath = "${buildDir}/reports/jacoco/test/jacocoReport.xml"
 }
 
 tasks.coveralls {
     group = 'Coverage reports'
     description = 'Uploads the aggregated coverage report to Coveralls'
 
-    dependsOn jacocoRootReport
+    dependsOn jacocoTestReport
     onlyIf { System.env.'CI' }
 }
 
