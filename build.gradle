@@ -4,11 +4,6 @@ buildscript {
     }
 }
 
-plugins {
-    id 'jacoco'
-        id 'com.github.kt3k.coveralls' version '2.6.3'
-}
-
 apply plugin: 'groovy'
 apply plugin: 'idea'
 apply plugin: 'jacoco'
@@ -127,16 +122,3 @@ jacocoTestReport {
         html.enabled = true
     }
 }
-coveralls {
-    jacocoReportPath = "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
-}
-
-tasks.coveralls {
-    group = 'Coverage reports'
-    description = 'Uploads the aggregated coverage report to Coveralls'
-
-    dependsOn jacocoTestReport
-    onlyIf { System.env.'CI' }
-}
-
-check.dependsOn "coveralls"
