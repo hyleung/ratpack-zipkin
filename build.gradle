@@ -115,6 +115,13 @@ uploadArchives {
     }
 }
 
+install {
+    repositories.mavenInstaller {
+        pom.groupId = 'com.github.hyleung'
+        pom.artifactId = 'ratpack-zipkin'
+    }
+}
+
 //Coverage
 jacocoTestReport {
     reports {

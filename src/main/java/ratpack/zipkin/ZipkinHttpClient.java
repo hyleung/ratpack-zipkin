@@ -15,101 +15,88 @@
  */
 package ratpack.zipkin;
 
-import com.github.kristofa.brave.ClientRequestInterceptor;
-import com.github.kristofa.brave.ClientResponseInterceptor;
-import io.netty.buffer.ByteBufAllocator;
 import ratpack.exec.Promise;
 import ratpack.func.Action;
-import ratpack.http.client.HttpClient;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
-import ratpack.http.client.StreamedResponse;
-import ratpack.zipkin.internal.ClientRequestAdapterFactory;
-import ratpack.zipkin.internal.ClientResponseAdapterFactory;
 
-import javax.inject.Inject;
 import java.net.URI;
-import java.time.Duration;
 
 /**
- * Decorator that adds Zipkin client logging around {@link HttpClient}.
+ * This API is modelled after {@link ratpack.http.client.HttpClient}, provides
+ * *separate* methods for each of the supported HTTP methods.
+ *
+ * This class is a workaround for the lack of client request/response interceptors
+ * + the API of {@link RequestSpec}, which doesn't provide any way to determine
+ * the HTTP method of the request spec.
  */
-public class ZipkinHttpClient implements HttpClient {
-  private final HttpClient delegate;
-  private final ClientRequestInterceptor requestInterceptor;
-  private final ClientResponseInterceptor responseInterceptor;
-  private final ClientRequestAdapterFactory requestAdapterFactory;
-  private final ClientResponseAdapterFactory responseAdapterFactory;
+public interface ZipkinHttpClient {
+  /**
+   * Execute an HTTP GET.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> get(URI uri, Action<? super RequestSpec> requestConfigurer);
 
-  @Inject
-  public ZipkinHttpClient(final HttpClient delegate,
-                          final ClientRequestInterceptor requestInterceptor,
-                          final ClientResponseInterceptor responseInterceptor,
-                          final ClientRequestAdapterFactory requestAdapterFactory,
-                          final ClientResponseAdapterFactory responseAdapterFactory) {
-    this.delegate = delegate;
-    this.requestInterceptor = requestInterceptor;
-    this.responseInterceptor = responseInterceptor;
-    this.requestAdapterFactory = requestAdapterFactory;
-    this.responseAdapterFactory = responseAdapterFactory;
-  }
-
-  @Override
-  public Promise<ReceivedResponse> get(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.prepend(requestSpec ->
-        requestInterceptor.handle(requestAdapterFactory.createAdaptor(requestSpec, "GET"))
-    ));
-  }
-
-  @Override
-  public Promise<ReceivedResponse> get(final URI uri) {
+  /**
+   * Execute an HTTP GET.
+   *
+   * With not additional request configuration.
+   * @param uri the URI
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  default Promise<ReceivedResponse> get(final URI uri) {
     return get(uri, Action.noop());
   }
-
-  @Override
-  public ByteBufAllocator getByteBufAllocator() {
-    return delegate.getByteBufAllocator();
-  }
-
-  @Override
-  public int getPoolSize() {
-    return delegate.getPoolSize();
-  }
-
-  @Override
-  public Duration getReadTimeout() {
-    return delegate.getReadTimeout();
-  }
-
-  @Override
-  public int getMaxContentLength() {
-    return delegate.getMaxContentLength();
-  }
-
-  @Override
-  public void close() {
-    delegate.close();
-  }
-
-  @Override
-  public Promise<ReceivedResponse> post(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.prepend(requestSpec ->
-        requestInterceptor.handle(requestAdapterFactory.createAdaptor(requestSpec, "POST"))
-    ));
-  }
-
-  @Override
-  public Promise<ReceivedResponse> request(final URI uri, final Action<? super RequestSpec>
-      requestConfigurer) {
-    return delegate
-        .request(uri, requestConfigurer)
-        .wiretap(receivedResponseResult ->
-            responseInterceptor.handle(responseAdapterFactory.createAdapter(receivedResponseResult.getValue())));
-  }
-
-  @Override
-  public Promise<StreamedResponse> requestStream(final URI uri, final Action<? super RequestSpec>
-      requestConfigurer) {
-    return delegate.requestStream(uri, requestConfigurer);
-  }
+  /**
+   * Execute an HTTP GET.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> post(URI uri, Action<? super RequestSpec> requestConfigurer);
+  /**
+   * Execute an HTTP POST.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> put(URI uri, Action<? super RequestSpec> requestConfigurer);
+  /**
+   * Execute an HTTP PUT.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> delete(URI uri, Action<? super RequestSpec> requestConfigurer);
+  /**
+   * Execute an HTTP PATCH.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> patch(URI uri, Action<? super RequestSpec> requestConfigurer);
+  /**
+   * Execute an HTTP HEAD.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> head(URI uri, Action<? super RequestSpec> requestConfigurer);
+  /**
+   * Execute an HTTP OPTIONS.
+   * @param uri the URI
+   * @param requestConfigurer the request configurer
+   *
+   * @return a Promise of a ReceivedResponse
+   */
+  Promise<ReceivedResponse> options(URI uri, Action<? super RequestSpec> requestConfigurer);
 }
