@@ -4,18 +4,14 @@
 
 [Zipkin](https://twitter.github.io/zipkin/index.html) support for [Ratpack](http://www.ratpack.io).
 
-This repo is a work-in-progress for adding Zipkin support to Ratpack.
-
 Uses [Brave](https://github.com/openzipkin/brave) for the underlying Zipkin support.
 
-## Releases
-
-Currently, only snapshot releases are available (at https://oss.sonatype.org/content/repositories/snapshots/).
+## Binaries
 
 Using Gradle:
 
 ```
-compile 'com.github.hyleung:ratpack-zipkin:1.0.0-SNAPSHOT'
+compile 'com.github.hyleung:ratpack-zipkin:1.0.0'
 ```
 
 Using Maven:
@@ -24,7 +20,7 @@ Using Maven:
 <dependency>
   <groupId>com.github.hyleung</groupId>
   <artifactId>ratpack-zipkin</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
