@@ -15,9 +15,7 @@
  */
 package ratpack.zipkin.internal
 
-import com.github.kristofa.brave.KeyValueAnnotation
 import com.github.kristofa.brave.http.SpanNameProvider
-import ratpack.func.Function
 import ratpack.http.Request
 import ratpack.zipkin.RequestAnnotationExtractor
 import spock.lang.Specification

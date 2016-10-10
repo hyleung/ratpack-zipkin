@@ -53,7 +53,7 @@ class RatpackClientRequestAdapterSpec extends Specification {
     def 'Should return uri in annotations'() {
         given:
             def expected = new URI("some-uri")
-            requestSpec.getUrl() >> expected
+            requestSpec.getUri() >> expected
         when:
             def result = adapter.requestAnnotations()
         then:

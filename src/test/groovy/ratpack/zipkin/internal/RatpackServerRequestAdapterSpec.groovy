@@ -77,9 +77,9 @@ class RatpackServerRequestAdapterSpec extends Specification {
             def traceData = adapter.getTraceData()
             def span = traceData.getSpanId()
         then:
-            span.getParentSpanId() == IdConversion.convertToLong(parentId)
-            span.getTraceId() == IdConversion.convertToLong(traceId)
-            span.getSpanId() == IdConversion.convertToLong(spanId)
+            span.nullableParentId() == IdConversion.convertToLong(parentId)
+            span.@traceId == IdConversion.convertToLong(traceId)
+            span.@spanId == IdConversion.convertToLong(spanId)
     }
 
     def 'getTraceData should build SpanId if parentId is absent'() {
@@ -94,9 +94,9 @@ class RatpackServerRequestAdapterSpec extends Specification {
             def traceData = adapter.getTraceData()
             def span = traceData.getSpanId()
         then:
-            span.getParentSpanId() == null
-            span.getTraceId() == IdConversion.convertToLong(traceId)
-            span.getSpanId() == IdConversion.convertToLong(spanId)
+            span.nullableParentId() == null
+            span.@traceId == IdConversion.convertToLong(traceId)
+            span.@spanId == IdConversion.convertToLong(spanId)
     }
 
     def 'getTraceData should NOT build SpanId if traceId header not present'() {

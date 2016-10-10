@@ -36,7 +36,7 @@ class RatpackHttpClientRequest implements HttpClientRequest {
 
   @Override
   public URI getUri() {
-    return requestSpec.getUrl();
+    return requestSpec.getUri();
   }
 
   @Override

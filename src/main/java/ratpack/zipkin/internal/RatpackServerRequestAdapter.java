@@ -26,6 +26,8 @@ import ratpack.zipkin.RequestAnnotationExtractor;
 import java.util.Collection;
 import java.util.Collections;
 
+import static com.github.kristofa.brave.IdConversion.convertToLong;
+
 /**
  * Implementation of {@link ServerRequestAdapter} for RatPack.
  */
@@ -83,10 +85,10 @@ class RatpackServerRequestAdapter implements ServerRequestAdapter {
   }
 
   private SpanId getSpanId(String traceId, String spanId, String parentSpanId) {
-    if (parentSpanId != null)
-    {
-      return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), IdConversion.convertToLong(parentSpanId));
-    }
-    return SpanId.create(IdConversion.convertToLong(traceId), IdConversion.convertToLong(spanId), null);
+    return SpanId.builder()
+                 .traceId(convertToLong(traceId))
+                 .spanId(convertToLong(spanId))
+                 .parentId(parentSpanId == null ? null : convertToLong(parentSpanId)).build();
   }
+
 }

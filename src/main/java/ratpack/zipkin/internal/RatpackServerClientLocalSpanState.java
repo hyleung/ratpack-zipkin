@@ -47,7 +47,11 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
                                     final Supplier<MutableRegistry> registry,
                                     final MDCProxy mdc) {
     this.registry = registry;
-    this.endpoint = Endpoint.create(serviceName, ip, port);
+    this.endpoint = Endpoint.builder()
+                            .serviceName(serviceName)
+                            .ipv4(ip)
+                            .port(port)
+                            .build();
     this.mdc = mdc;
   }
 
