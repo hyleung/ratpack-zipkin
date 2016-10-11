@@ -33,7 +33,7 @@ class RatpackHttpClientRequestSpec extends Specification {
     def 'Should get uri from spec'() {
         given:
             def expected = new URI("some-uri")
-            requestSpec.getUrl() >> expected
+            requestSpec.getUri() >> expected
         expect:
             request.getUri() == expected
     }

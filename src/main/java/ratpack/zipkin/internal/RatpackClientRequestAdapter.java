@@ -65,7 +65,7 @@ class RatpackClientRequestAdapter implements ClientRequestAdapter {
 
   @Override
   public Collection<KeyValueAnnotation> requestAnnotations() {
-    return Collections.singletonList(KeyValueAnnotation.create("http.uri", requestSpec.getUrl().toString()));
+    return Collections.singletonList(KeyValueAnnotation.create("http.uri", requestSpec.getUri().toString()));
   }
 
   @Override

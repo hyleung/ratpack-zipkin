@@ -25,6 +25,8 @@ import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.server.ServerConfig;
 import ratpack.zipkin.internal.*;
+import zipkin.Span;
+import zipkin.reporter.Reporter;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
@@ -99,7 +101,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
             serverConfig.getPort()
         )
     );
-    if (config.spanCollector != null) {
+    if (config.spanReporter != null) {
+      braveBuilder.reporter(config.spanReporter);
+    }
+    else if (config.spanCollector != null) {
       braveBuilder.spanCollector(config.spanCollector);
     }
     if (config.sampler != null) {
@@ -112,10 +117,14 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public LocalTracer localTracer(final Brave brave) {
     return brave.localTracer();
   }
-  
+
+  /**
+   * Configuration class for {@link ServerTracingModule}.
+   */
   public static class Config {
     private String serviceName = "unknown";
     private SpanCollector spanCollector;
+    private Reporter<Span> spanReporter;
     private Sampler sampler;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
@@ -126,8 +135,24 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
 
+    /**
+     * Configure the module to use the specified {@link SpanCollector}.
+     *
+     * @param spanCollector the span collector
+     *
+     * @return the Config instance
+     * @deprecated {@link SpanCollector} was deprecated in Brave 3.14.0.
+     *
+     * Use {@link ServerTracingModule.Config#spanReporter(Reporter)} instead.
+     */
+    @Deprecated
     public Config spanCollector(final SpanCollector spanCollector) {
       this.spanCollector = spanCollector;
+      return this;
+    }
+
+    public Config spanReporter(final Reporter<Span> reporter) {
+      this.spanReporter = reporter;
       return this;
     }
 

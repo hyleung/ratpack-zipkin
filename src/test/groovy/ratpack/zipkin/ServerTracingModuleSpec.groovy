@@ -23,6 +23,7 @@ import org.assertj.core.util.Lists
 import ratpack.groovy.test.embed.GroovyEmbeddedApp
 import ratpack.guice.Guice
 import spock.lang.Specification
+import zipkin.reporter.Reporter
 
 class ServerTracingModuleSpec extends Specification {
 
@@ -45,7 +46,7 @@ class ServerTracingModuleSpec extends Specification {
                     binding.module(ServerTracingModule.class, { config ->
                         config
                             .sampler(Sampler.create(1f))
-                            .spanCollector(Stub(SpanCollector))
+                            .spanReporter(Stub(Reporter))
                             .spanNameProvider(Stub(SpanNameProvider))
                             .requestAnnotations{request -> Lists.emptyList()}
                             .responseAnnotations(){response -> Lists.emptyList()}
@@ -68,6 +69,31 @@ class ServerTracingModuleSpec extends Specification {
         expect:
         app.test { t -> t.get()}
     }
+
+    def 'Should collect spans with Reporter'() {
+        given:
+            def reporter = Mock(Reporter)
+            def app = GroovyEmbeddedApp.of { server ->
+                server.registry(Guice.registry { binding ->
+                    binding.module(ServerTracingModule.class, { config ->
+                        config
+                                .serviceName("embedded")
+                                .spanReporter(reporter)
+                    })
+                }).handlers { chain -> chain.all { ctx -> ctx.render("foo") } }
+            }
+        when:
+            app.test { t -> t.get()}
+        then:
+            1 * reporter.report(_)
+    }
+
+    /**
+     * SpanCollector is deprecated.
+     *
+     * Retaining this test until ServerTracingModule.Config.spanCollector(SpanCollector)
+     * is removed.
+     */
     def 'Should collect spans with SpanCollector'() {
         given:
             def spanCollector = Mock(SpanCollector)
@@ -86,15 +112,15 @@ class ServerTracingModuleSpec extends Specification {
             1 * spanCollector.collect(_ as Span)
     }
 
-    def 'Should not collect spans with SpanCollector with 0 pct. sampling'() {
+    def 'Should not collect spans with 0 pct. sampling'() {
         given:
-            def spanCollector = Mock(SpanCollector)
+            def spanReporter = Mock(Reporter)
             def app = GroovyEmbeddedApp.of { server ->
                 server.registry(Guice.registry { binding ->
                     binding.module(ServerTracingModule.class, { config ->
                         config
                             .serviceName("embedded")
-                            .spanCollector(spanCollector)
+                            .spanReporter(spanReporter)
                             .sampler(Sampler.create(0))
                 })
             }).handlers { chain -> chain.all { ctx -> ctx.render("foo") } }
@@ -102,6 +128,6 @@ class ServerTracingModuleSpec extends Specification {
         when:
             app.test { t -> t.get()}
         then:
-            0 * spanCollector.collect(_ as Span)
+            0 * spanReporter.report(_)
     }
 }
