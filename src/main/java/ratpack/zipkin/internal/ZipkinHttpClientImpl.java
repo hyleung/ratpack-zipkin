@@ -23,6 +23,7 @@ import ratpack.http.HttpMethod;
 import ratpack.http.client.HttpClient;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
+import ratpack.http.client.StreamedResponse;
 import ratpack.zipkin.ZipkinHttpClient;
 
 import javax.inject.Inject;
@@ -106,6 +107,21 @@ public class ZipkinHttpClientImpl implements ZipkinHttpClient {
         requestInterceptor
             .handle(requestAdapterFactory.createAdaptor(requestSpec.options(), HttpMethod.OPTIONS.getName()))
     ));
+  }
+
+  @Override
+  public Promise<StreamedResponse> requestStream(URI uri, HttpMethod method, final Action<? super RequestSpec> requestConfigurer) {
+
+    final Action<? super RequestSpec> wrappedRequestSpec = requestConfigurer.append(requestSpec ->
+      requestInterceptor
+        .handle(requestAdapterFactory.createAdaptor(requestSpec.method(method), method.getName()))
+    );
+
+    return delegate
+        .requestStream(uri, wrappedRequestSpec)
+        .wiretap(streamedResponseResult ->
+              responseInterceptor.handle(responseAdapterFactory.createAdapter(streamedResponseResult.getValue()))
+        );
   }
 
   private Promise<ReceivedResponse> request(final URI uri, final Action<? super RequestSpec>

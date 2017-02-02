@@ -17,9 +17,14 @@ package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.ClientResponseAdapter;
 import ratpack.http.client.ReceivedResponse;
+import ratpack.http.client.StreamedResponse;
 
 public class ClientResponseAdapterFactory {
   public ClientResponseAdapter createAdapter(final ReceivedResponse receivedResponse) {
     return new RatpackHttpClientResponseAdapter(receivedResponse);
+  }
+
+  public ClientResponseAdapter createAdapter(final StreamedResponse streamedResponse) {
+    return new RatpackHttpClientStreamedResponseAdapter(streamedResponse);
   }
 }
