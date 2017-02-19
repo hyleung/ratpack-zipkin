@@ -65,7 +65,7 @@ public class ZipkinHttpClientImpl implements ZipkinHttpClient {
   public Promise<ReceivedResponse> post(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
     return request(uri, requestConfigurer.append(requestSpec ->
         requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec, HttpMethod.POST.getName()))
+            .handle(requestAdapterFactory.createAdaptor(requestSpec.post(), HttpMethod.POST.getName()))
     ));
   }
 
