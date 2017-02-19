@@ -17,8 +17,10 @@ package ratpack.zipkin;
 
 import ratpack.exec.Promise;
 import ratpack.func.Action;
+import ratpack.http.HttpMethod;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
+import ratpack.http.client.StreamedResponse;
 
 import java.net.URI;
 
@@ -99,4 +101,12 @@ public interface ZipkinHttpClient {
    * @return a Promise of a ReceivedResponse
    */
   Promise<ReceivedResponse> options(URI uri, Action<? super RequestSpec> requestConfigurer);
+  /**
+   * Execute an HTTP request via Ratpack HttpClient's requestStream API.
+   * @param uri the URI
+   * @param method the Http Method being invoked
+   * @param requestConfigurer the request configurer
+   * @return a Promise of a StreamedResponse
+   */
+  Promise<StreamedResponse> requestStream(URI uri, HttpMethod method, Action<? super RequestSpec> requestConfigurer);
 }
