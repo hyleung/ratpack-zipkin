@@ -17,6 +17,7 @@ package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.ClientRequestInterceptor;
 import com.github.kristofa.brave.ClientResponseInterceptor;
+import io.netty.buffer.ByteBufAllocator;
 import ratpack.exec.Promise;
 import ratpack.func.Action;
 import ratpack.http.HttpMethod;
@@ -24,111 +25,94 @@ import ratpack.http.client.HttpClient;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
 import ratpack.http.client.StreamedResponse;
-import ratpack.zipkin.ZipkinHttpClient;
 
 import javax.inject.Inject;
 import java.net.URI;
+import java.time.Duration;
+import java.util.Optional;
 
 /**
  * Decorator that adds Zipkin client logging around {@link HttpClient}.
  */
-public class ZipkinHttpClientImpl implements ZipkinHttpClient {
-  private final HttpClient delegate;
-  private final ClientRequestInterceptor requestInterceptor;
-  private final ClientResponseInterceptor responseInterceptor;
-  private final ClientRequestAdapterFactory requestAdapterFactory;
-  private final ClientResponseAdapterFactory responseAdapterFactory;
+public class ZipkinHttpClientImpl implements HttpClient {
+    private final HttpClient delegate;
+    private final ClientRequestInterceptor requestInterceptor;
+    private final ClientResponseInterceptor responseInterceptor;
+    private final ClientRequestAdapterFactory requestAdapterFactory;
+    private final ClientResponseAdapterFactory responseAdapterFactory;
 
-  @Inject
-  public ZipkinHttpClientImpl(final HttpClient delegate,
-                              final ClientRequestInterceptor requestInterceptor,
-                              final ClientResponseInterceptor responseInterceptor,
-                              final ClientRequestAdapterFactory requestAdapterFactory,
-                              final ClientResponseAdapterFactory responseAdapterFactory) {
-    this.delegate = delegate;
-    this.requestInterceptor = requestInterceptor;
-    this.responseInterceptor = responseInterceptor;
-    this.requestAdapterFactory = requestAdapterFactory;
-    this.responseAdapterFactory = responseAdapterFactory;
-  }
+    @Inject
+    public ZipkinHttpClientImpl(final HttpClient delegate,
+                                final ClientRequestInterceptor requestInterceptor,
+                                final ClientResponseInterceptor responseInterceptor,
+                                final ClientRequestAdapterFactory requestAdapterFactory,
+                                final ClientResponseAdapterFactory responseAdapterFactory) {
+        this.delegate = delegate;
+        this.requestInterceptor = requestInterceptor;
+        this.responseInterceptor = responseInterceptor;
+        this.requestAdapterFactory = requestAdapterFactory;
+        this.responseAdapterFactory = responseAdapterFactory;
+    }
 
-  @Override
-  public Promise<ReceivedResponse> get(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec, HttpMethod.GET.getName()))
-    ));
-  }
+    @Override
+    public ByteBufAllocator getByteBufAllocator() {
+        return delegate.getByteBufAllocator();
+    }
 
+    @Override
+    public int getPoolSize() {
+        return delegate.getPoolSize();
+    }
 
-  @Override
-  public Promise<ReceivedResponse> post(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec.post(), HttpMethod.POST.getName()))
-    ));
-  }
+    @Override
+    public Duration getReadTimeout() {
+        return delegate.getReadTimeout();
+    }
 
-  @Override
-  public Promise<ReceivedResponse> put(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec.put(), HttpMethod.PUT.getName()))
-    ));
-  }
+    @Override
+    public int getMaxContentLength() {
+        return delegate.getMaxContentLength();
+    }
 
-  @Override
-  public Promise<ReceivedResponse> delete(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec.delete(), HttpMethod.DELETE.getName()))
-    ));
-  }
+    @Override
+    public void close() {
+        delegate.close();
+    }
 
-  @Override
-  public Promise<ReceivedResponse> patch(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec.patch(), HttpMethod.PATCH.getName()))
-    ));
-  }
+    @Override
+    public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
+        return delegate.request(uri, tracedRequestAction(action))
+                .wiretap(receivedResponseResult -> responseInterceptor
+                        .handle(responseAdapterFactory.createAdapter(receivedResponseResult.getValue()))
+                );
+    }
 
-  @Override
-  public Promise<ReceivedResponse> head(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec.head(), HttpMethod.HEAD.getName()))
-    ));
-  }
+    @Override
+    public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
+        return delegate.requestStream(uri, tracedRequestAction(requestConfigurer))
+                .wiretap(streamedResponseResult -> responseInterceptor
+                        .handle(responseAdapterFactory.createAdapter(streamedResponseResult.getValue()))
+                );
+    }
 
-  @Override
-  public Promise<ReceivedResponse> options(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
-    return request(uri, requestConfigurer.append(requestSpec ->
-        requestInterceptor
-            .handle(requestAdapterFactory.createAdaptor(requestSpec.options(), HttpMethod.OPTIONS.getName()))
-    ));
-  }
+    @Override
+    public Promise<ReceivedResponse> get(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
+        return request(uri, requestConfigurer.prepend(RequestSpec::get));
+    }
 
-  @Override
-  public Promise<StreamedResponse> requestStream(URI uri, HttpMethod method, final Action<? super RequestSpec> requestConfigurer) {
+    @Override
+    public Promise<ReceivedResponse> post(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
+        return request(uri, requestConfigurer.prepend(RequestSpec::post));
+    }
 
-    final Action<? super RequestSpec> wrappedRequestSpec = requestConfigurer.append(requestSpec ->
-      requestInterceptor
-        .handle(requestAdapterFactory.createAdaptor(requestSpec.method(method), method.getName()))
-    );
+    private Action<? super RequestSpec> tracedRequestAction(final Action<? super RequestSpec> action) {
+        return action.append(requestSpec -> {
+            MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(requestSpec);
+            action.with(captor);
+            HttpMethod capturedMethod = Optional.ofNullable(captor.getCapturedMethod()).orElse(HttpMethod.GET);
+            requestInterceptor
+                    .handle(requestAdapterFactory.createAdaptor(requestSpec.method(capturedMethod), capturedMethod.getName()));
+        });
+    }
 
-    return delegate
-        .requestStream(uri, wrappedRequestSpec)
-        .wiretap(streamedResponseResult ->
-              responseInterceptor.handle(responseAdapterFactory.createAdapter(streamedResponseResult.getValue()))
-        );
-  }
-
-  private Promise<ReceivedResponse> request(final URI uri, final Action<? super RequestSpec>
-      requestConfigurer) {
-    return delegate
-        .request(uri, requestConfigurer)
-        .wiretap(receivedResponseResult ->
-            responseInterceptor.handle(responseAdapterFactory.createAdapter(receivedResponseResult.getValue())));
-  }
 }

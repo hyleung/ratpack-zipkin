@@ -23,6 +23,7 @@ import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
+import ratpack.http.client.HttpClient;
 import ratpack.server.ServerConfig;
 import ratpack.zipkin.internal.*;
 import zipkin.Span;
@@ -47,7 +48,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     bind(ClientRequestAdapterFactory.class).in(SINGLETON);
     bind(ClientResponseAdapterFactory.class).in(SINGLETON);
 
-    bind(ZipkinHttpClient.class).to(ZipkinHttpClientImpl.class);
+
+    bind(HttpClient.class).annotatedWith(Zipkin.class).to(ZipkinHttpClientImpl.class);
     Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding().toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
   }
 
