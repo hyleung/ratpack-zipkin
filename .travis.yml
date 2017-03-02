@@ -2,11 +2,7 @@ language: java
 jdk:
 - oraclejdk8
 sudo: false
-before_install:
-- openssl aes-256-cbc -K $encrypted_77054ff15c0a_key -iv $encrypted_77054ff15c0a_iv
-  -in $TRAVIS_BUILD_DIR/gradle/secring.gpg.enc -out $TRAVIS_BUILD_DIR/gradle/secring.gpg -d
-install: ./gradlew clean assemble javadoc -Psigning.keyId=$SIGNING_KEY_ID -Psigning.password=$SIGNING_PASSWORD
-  -Psigning.secretKeyRingFile=$TRAVIS_BUILD_DIR/gradle/secring.gpg
+install: . $TRAVIS_BUILD_DIR/gradle/build.sh 
 env:
   global:
   - secure: gq9ypxr3lxqV7Od7sxaR9Bd3VC5BkUSRb5QK8dvF7fGt9ei3EcStBdIs50XYjXryZhLjFcmElBGnsmlo20acjePmLuFLOPDeVmT57K/CYR6D1OT3n0DEOBj0D9StaJCf/vQvmbKrCM1VfVWc22oz6WW2G43keHaIjdi633Dym4pzXJqx7RgzXWz8HLxg3Uut9eJluIYc/b5xhQi8zIPbgLzbm5CSy40bgLbvMchZOgsKDyESKjRIiJ9wxpIpRvNQbGE3IaviZ0naxjpQxdicsUbmQVTuD7W0J77P9QM6vMU5zMBh0UvOl/TJiXgCdz0be0yZ2BO98jHTsR0FF8v7MJoxg5n1+TTDZZ3GHKtIeXRUZV7T0nwga+3aKXEheGX806Vr15u9bs9WYHp3DvPn1QHGtXEPVHFcC9faWGPXDNJdcm47JLYvdbyvezaW/tRVlQQuYL6hhRVjc800EkryNaCWx4ryPW2qDDPuQBZj8STCyKzXKEIGCLupusQenfmWo7bvwLHbfOx5PEZbti4E0a6VpJqoVTH418t35EblWv9vQELwiTDRIaw6ufAGwei9NYY2SbzzXJIP2x1UOJaltHf7n+nMCbe7WFBY4K/ACbW3Oi2EroYY9djfXg9ejlTK8FAzbkSiB7lGC2ZTY+1vxtUiVOmIpnW1dqq4W2qGOSY=
