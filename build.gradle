@@ -13,8 +13,6 @@ apply plugin: 'jacoco'
 apply plugin: 'maven'
 apply plugin: 'signing'
 
-version = "1.2.0-SNAPSHOT"
-
 //Only target Java 8
 if (!JavaVersion.current().java8Compatible) {
     throw new IllegalStateException("Must be built with Java 8 or higher")
