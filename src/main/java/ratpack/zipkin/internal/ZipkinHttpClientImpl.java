@@ -108,7 +108,7 @@ public class ZipkinHttpClientImpl implements HttpClient {
     private Action<? super RequestSpec> tracedRequestAction(final Action<? super RequestSpec> action) {
         return action.append(requestSpec -> {
             MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(requestSpec);
-            action.with(captor);
+            action.execute(captor);
             HttpMethod capturedMethod = Optional.ofNullable(captor.getCapturedMethod()).orElse(HttpMethod.GET);
             requestInterceptor
                     .handle(requestAdapterFactory.createAdaptor(requestSpec.method(capturedMethod), capturedMethod.getName()));

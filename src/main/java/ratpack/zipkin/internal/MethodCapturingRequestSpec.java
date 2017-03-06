@@ -6,7 +6,6 @@ import ratpack.func.Action;
 import ratpack.func.Function;
 import ratpack.http.HttpMethod;
 import ratpack.http.MutableHeaders;
-import ratpack.http.Request;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
 import ratpack.http.internal.NettyHeadersBackedMutableHeaders;
@@ -17,7 +16,11 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.time.Duration;
 
-public class MethodCapturingRequestSpec implements RequestSpec {
+/**
+ * "Dummy" implementation of RequestSpec, used to capture the HTTP request method.
+ *
+ */
+class MethodCapturingRequestSpec implements RequestSpec {
 
     private final RequestSpec actualSpec;
     private HttpMethod capturedMethod = null;
