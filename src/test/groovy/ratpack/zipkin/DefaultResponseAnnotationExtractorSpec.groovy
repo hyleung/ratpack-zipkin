@@ -19,6 +19,8 @@ import ratpack.http.Response
 import ratpack.http.internal.DefaultStatus
 import spock.genesis.Gen
 import spock.lang.Specification
+import zipkin.Constants
+import zipkin.TraceKeys
 
 class DefaultResponseAnnotationExtractorSpec extends Specification {
 
@@ -44,7 +46,7 @@ class DefaultResponseAnnotationExtractorSpec extends Specification {
             def result = extractor.annotationsForResponse(response)
         then:
             !result.isEmpty()
-            def entry = result.find {annotation -> annotation.getKey() == "http.responsecode"}
+            def entry = result.find {annotation -> annotation.getKey() == TraceKeys.HTTP_STATUS_CODE}
             entry.getValue() == statusCode.toString()
         where:
             statusCode << Gen.integer(100..199).take(10)
@@ -57,9 +59,22 @@ class DefaultResponseAnnotationExtractorSpec extends Specification {
             def result = extractor.annotationsForResponse(response)
         then:
             !result.isEmpty()
-            def entry = result.find {annotation -> annotation.getKey() == "http.responsecode"}
+            def entry = result.find {annotation -> annotation.getKey() == TraceKeys.HTTP_STATUS_CODE}
             entry.getValue() == statusCode.toString()
         where:
             statusCode << Gen.integer(300..500).take(10)
+    }
+
+    def 'Should return error annotations for status (>= 5xx)'(int statusCode) {
+        setup:
+        response.getStatus() >>  DefaultStatus.of(statusCode)
+        when:
+        def result = extractor.annotationsForResponse(response)
+        then:
+        !result.isEmpty()
+        def entry = result.find {annotation -> annotation.getKey() == Constants.ERROR}
+        entry.getValue() == "server error"
+        where:
+        statusCode << Gen.integer(500..550).take(10)
     }
 }

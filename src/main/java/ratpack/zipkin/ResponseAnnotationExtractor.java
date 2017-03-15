@@ -16,10 +16,14 @@
 package ratpack.zipkin;
 
 import com.github.kristofa.brave.KeyValueAnnotation;
+import java.util.LinkedList;
+import java.util.List;
 import ratpack.http.Response;
 
 import java.util.Collection;
 import java.util.Collections;
+import zipkin.Constants;
+import zipkin.TraceKeys;
 
 @FunctionalInterface
 public interface ResponseAnnotationExtractor {
@@ -28,11 +32,17 @@ public interface ResponseAnnotationExtractor {
   ResponseAnnotationExtractor DEFAULT = (response -> {
     int httpStatus = response.getStatus().getCode();
 
+    List<KeyValueAnnotation> annotations = new LinkedList<>();
+
     if ((httpStatus < 200) || (httpStatus > 299)) {
-      KeyValueAnnotation statusAnnotation = KeyValueAnnotation
-          .create("http.responsecode", String.valueOf(httpStatus));
-      return Collections.singleton(statusAnnotation);
+      annotations.add(KeyValueAnnotation
+          .create(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus)));
     }
-    return Collections.emptyList();
+
+    if (httpStatus > 499) {
+      annotations.add(KeyValueAnnotation.create(Constants.ERROR, "server error"));
+    }
+
+    return annotations;
   });
 }

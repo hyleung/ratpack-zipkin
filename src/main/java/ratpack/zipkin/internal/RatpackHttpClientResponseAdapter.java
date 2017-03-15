@@ -17,10 +17,16 @@ package ratpack.zipkin.internal;
 
 import com.github.kristofa.brave.ClientResponseAdapter;
 import com.github.kristofa.brave.KeyValueAnnotation;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 import ratpack.http.client.ReceivedResponse;
 
 import java.util.Collection;
 import java.util.Collections;
+import zipkin.Constants;
+import zipkin.TraceKeys;
 
 class RatpackHttpClientResponseAdapter implements ClientResponseAdapter {
   private final ReceivedResponse response;
@@ -31,13 +37,27 @@ class RatpackHttpClientResponseAdapter implements ClientResponseAdapter {
 
   @Override
   public Collection<KeyValueAnnotation> responseAnnotations() {
-    int httpStatus = response.getStatus().getCode();
+    if (response != null && response.getStatus() != null) {
+      int httpStatus = response.getStatus().getCode();
 
-    if ((httpStatus < 200) || (httpStatus > 299)) {
+      List<KeyValueAnnotation> annotations = new LinkedList<>();
+
+      if ((httpStatus < 200) || (httpStatus > 299)) {
+        annotations.add(KeyValueAnnotation
+            .create(TraceKeys.HTTP_STATUS_CODE, String.valueOf(httpStatus)));
+      }
+
+      if (httpStatus > 399) {
+        annotations.add(KeyValueAnnotation
+            .create(Constants.ERROR, "error status " + httpStatus));
+      }
+
+      return annotations;
+    } else {
       KeyValueAnnotation statusAnnotation = KeyValueAnnotation
-          .create("http.responsecode", String.valueOf(httpStatus));
+          .create(Constants.ERROR, "missing or unknown status code");
+
       return Collections.singleton(statusAnnotation);
     }
-    return Collections.emptyList();
   }
 }

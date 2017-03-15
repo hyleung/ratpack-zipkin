@@ -20,6 +20,8 @@ import ratpack.http.client.ReceivedResponse
 import ratpack.http.internal.DefaultStatus
 import spock.genesis.Gen
 import spock.lang.Specification
+import zipkin.Constants
+import zipkin.TraceKeys
 
 class RatpackHttpClientResponseAdapterSpec extends Specification {
     def ReceivedResponse response = Stub(ReceivedResponse)
@@ -48,7 +50,7 @@ class RatpackHttpClientResponseAdapterSpec extends Specification {
             def result = adapter.responseAnnotations()
         then:
             !result.isEmpty()
-            def entry = result.find {annotation -> annotation.getKey() == "http.responsecode"}
+            def entry = result.find {annotation -> annotation.getKey() == TraceKeys.HTTP_STATUS_CODE}
             entry.getValue() == statusCode.toString()
         where:
             statusCode << Gen.integer(100..199).take(10)
@@ -61,9 +63,35 @@ class RatpackHttpClientResponseAdapterSpec extends Specification {
             def result = adapter.responseAnnotations()
         then:
             !result.isEmpty()
-            def entry = result.find {annotation -> annotation.getKey() == "http.responsecode"}
+            def entry = result.find {annotation -> annotation.getKey() == TraceKeys.HTTP_STATUS_CODE}
             entry.getValue() == statusCode.toString()
         where:
-            statusCode << Gen.integer(300..500).take(10)
+            statusCode << Gen.integer(300..400).take(10)
+    }
+
+    def 'Should return error annotations for status (>= 5xx)'(int statusCode) {
+        setup:
+        response.getStatus() >>  DefaultStatus.of(statusCode)
+        when:
+        def result = adapter.responseAnnotations()
+        then:
+        !result.isEmpty()
+        def entry = result.find {annotation -> annotation.getKey() == Constants.ERROR}
+        entry.getValue() == "error status " + statusCode
+        where:
+        statusCode << Gen.integer(500..550).take(10)
+    }
+
+    def 'Should return error annotation when missing status code'() {
+        setup:
+        response.getStatus() >>  null
+        when:
+        def result = adapter.responseAnnotations()
+        then:
+        !result.isEmpty()
+        def entry = result.find {annotation -> annotation.getKey() == Constants.ERROR}
+        entry.getValue() == "missing or unknown status code"
+        where:
+        statusCode << Gen.integer(200..299).take(10)
     }
 }

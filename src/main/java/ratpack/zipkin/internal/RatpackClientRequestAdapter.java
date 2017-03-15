@@ -24,10 +24,12 @@ import com.github.kristofa.brave.http.HttpClientRequest;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.github.kristofa.brave.internal.Nullable;
 import com.twitter.zipkin.gen.Endpoint;
+import java.util.Arrays;
 import ratpack.http.client.RequestSpec;
 
 import java.util.Collection;
 import java.util.Collections;
+import zipkin.TraceKeys;
 
 class RatpackClientRequestAdapter implements ClientRequestAdapter {
   private final RequestSpec requestSpec;
@@ -65,7 +67,10 @@ class RatpackClientRequestAdapter implements ClientRequestAdapter {
 
   @Override
   public Collection<KeyValueAnnotation> requestAnnotations() {
-    return Collections.singletonList(KeyValueAnnotation.create("http.uri", requestSpec.getUri().toString()));
+    return Arrays.asList(
+        KeyValueAnnotation.create(TraceKeys.HTTP_HOST, requestSpec.getUri().getHost()),
+        KeyValueAnnotation.create(TraceKeys.HTTP_PATH, requestSpec.getUri().getPath())
+    );
   }
 
   @Override
