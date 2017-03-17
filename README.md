@@ -11,7 +11,7 @@ Uses [Brave](https://github.com/openzipkin/brave) for the underlying Zipkin supp
 Using Gradle:
 
 ```
-compile 'com.github.hyleung:ratpack-zipkin:1.1.0'
+compile 'com.github.hyleung:ratpack-zipkin:1.2.0'
 ```
 
 Using Maven:
@@ -20,7 +20,7 @@ Using Maven:
 <dependency>
   <groupId>com.github.hyleung</groupId>
   <artifactId>ratpack-zipkin</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
@@ -42,7 +42,7 @@ docker-compose up
 
 #### SR/SS Spans
 
-The mimimal configuration:
+The minimal configuration:
 
 ```
 RatpackServer.start(server -> server
@@ -61,22 +61,19 @@ This should add a `HandlerDecorator` that adds server send (SS) and server recei
 There's a small demo app in [ratpack-zipkin-example](https://github.com/hyleung/ratpack-zipkin-example).
 
 #### CS/CR Spans 
-
-`ZipkinHttpClient` provides some HTTP client functionality - similar to Ratpack's own `HttpClient`. There are separate
-methods for each of the supported HTTP methods (`GET`, `POST`, `PUT`, `PATCH`, `OPTIONS`, `HEAD`). Tracing of streamed
-responses is *not* supported.
+For tracing of Http client spans, use the `@Zipkin` annotation to inject a Zipkin instrumented implementation of the
+RatPack `HttpClient`.
 
 ```
-@Inject ZipkinHttpClient client
+@Inject
+@Zipkin
+HttpClient client
 ...
 client.get(new URI("http://example.com", requestSpec -> ...))
     ... 
 ```
 
-The underlying implementation is just a wrapper that delegates most of the work to a standard Ratpack `HttpClient` - 
-just adds a little bit of instrumentation around the client request/response. Eventually, the hope is that this custom
-Http client will go away, but that requires some extra hooks the normal Ratpack HTTP client.
-
+This annotation can be used for both field and constructor injection.
 #### Local Spans
 
 For local spans, use the normal Brave `LocalTracer`:
@@ -91,4 +88,21 @@ tracer.finishSpan();
 ```
 
 Currently nested local spans don't work - but hopefully soon!
+
+#### Default KeyValueAnnotations
+
+For server requests, we record the following annotations:
+- [TraceKeys.HTTP_PATH](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_PATH)
+- [TraceKeys.HTTP_METHOD](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_METHOD)
+
+For server responses, we record the following:
+- [TraceKeys.HTTP_STATUS_CODE](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_STATUS_CODE) for all **non-2xx** responses
+
+For client requests, we record the following:
+- [TraceKeys.HTTP_HOST](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_HOST)
+- [TraceKeys.HTTP_PATH](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_PATH)
+
+For client responses, we record the following:
+- [TraceKeys.HTTP_STATUS_CODE](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_STATUS_CODE) for all **non-2xx** responses
+
 
