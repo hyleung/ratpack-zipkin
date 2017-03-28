@@ -17,16 +17,22 @@ package ratpack.zipkin.internal
 
 import com.github.kristofa.brave.ServerClientAndLocalSpanState
 import com.github.kristofa.brave.ServerSpan
-
 import com.twitter.zipkin.gen.Endpoint
 import com.twitter.zipkin.gen.Span
+import ratpack.exec.Promise
+import ratpack.exec.util.ParallelBatch
 import ratpack.registry.internal.SimpleMutableRegistry
+import ratpack.test.exec.ExecHarness
+import spock.lang.AutoCleanup
 import spock.lang.Specification
 
 import static org.assertj.core.api.Assertions.assertThat
+
 class RatpackServiceClientLocalSpanStateSpec extends Specification {
     ServerClientAndLocalSpanState spanState
     RatpackServerClientLocalSpanState.MDCProxy mdc = Mock(RatpackServerClientLocalSpanState.MDCProxy)
+    @AutoCleanup
+    ExecHarness execHarness = ExecHarness.harness()
 
     def setup() {
         def registry = SimpleMutableRegistry.newInstance()
@@ -130,5 +136,35 @@ class RatpackServiceClientLocalSpanStateSpec extends Specification {
             def result = spanState.getCurrentLocalSpan()
         then:
             result == span
+    }
+
+    def 'Should get local span from execution'() {
+        setup:
+        def span = Stub(Span)
+
+        when:
+        Promise<Span> promisedLocalSpan = Promise.sync { spanState.getCurrentLocalSpan() }
+        Promise<List<Span>> batchResult = ParallelBatch.of(promisedLocalSpan).execInit { e ->
+            e.add(new RatpackServerClientLocalSpanState.CurrentLocalSpanValue(span))
+        }.yield()
+
+        def result = execHarness.yield {batchResult }.value
+
+        then: result.first() == span
+    }
+
+    def 'Should get server span from execution'() {
+        setup:
+        def serverSpan = Stub(ServerSpan)
+
+        when:
+        Promise<Span> promisedLocalSpan = Promise.sync { spanState.getCurrentServerSpan() }
+        Promise<List<Span>> batchResult = ParallelBatch.of(promisedLocalSpan).execInit { e ->
+            e.add(new RatpackServerClientLocalSpanState.CurrentServerSpanValue(serverSpan))
+        }.yield()
+
+        def result = execHarness.yield {batchResult }.value
+
+        then: result.first() == serverSpan
     }
 }
