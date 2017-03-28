@@ -15,6 +15,7 @@
  */
 package ratpack.zipkin
 
+import com.github.kristofa.brave.Brave
 import com.github.kristofa.brave.Sampler
 import com.github.kristofa.brave.SpanCollector
 import com.github.kristofa.brave.http.SpanNameProvider
@@ -22,6 +23,8 @@ import com.twitter.zipkin.gen.Span
 import org.assertj.core.util.Lists
 import ratpack.groovy.test.embed.GroovyEmbeddedApp
 import ratpack.guice.Guice
+import ratpack.server.ServerConfig
+import ratpack.zipkin.internal.RatpackServerClientLocalSpanState
 import spock.lang.Specification
 import zipkin.reporter.Reporter
 
@@ -129,5 +132,42 @@ class ServerTracingModuleSpec extends Specification {
             app.test { t -> t.get()}
         then:
             0 * spanReporter.report(_)
+    }
+
+    def 'ServerConfig ipv4 address Should override brave local address' () {
+        given:
+        int port = 12345
+        byte[] addressBytes = [255, 0, 0, 0]
+        InetAddress address = InetAddress.getByAddress(addressBytes)
+        int addressAsInt = 255 << 24
+        ServerTracingModule.Config config = new ServerTracingModule.Config()
+        ServerConfig serverConfig = Mock(ServerConfig)
+
+        when:
+        Brave brave = new ServerTracingModule().getBrave(config, serverConfig)
+
+        then:
+        brave.localSpanThreadBinder().state instanceof RatpackServerClientLocalSpanState
+        ((RatpackServerClientLocalSpanState) brave.localSpanThreadBinder().state).endpoint().ipv4 == addressAsInt
+        1 * serverConfig.getPort() >> port
+        1 * serverConfig.getAddress() >> address
+    }
+
+    def 'ServerConfig ipv6 address Should override brave local address' () {
+        given:
+        int port = 12345
+        byte[] addressBytes = [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        InetAddress address = InetAddress.getByAddress(addressBytes)
+        ServerTracingModule.Config config = new ServerTracingModule.Config()
+        ServerConfig serverConfig = Mock(ServerConfig)
+
+        when:
+        Brave brave = new ServerTracingModule().getBrave(config, serverConfig)
+
+        then:
+        brave.localSpanThreadBinder().state instanceof RatpackServerClientLocalSpanState
+        ((RatpackServerClientLocalSpanState) brave.localSpanThreadBinder().state).endpoint().ipv6 == addressBytes
+        1 * serverConfig.getPort() >> port
+        1 * serverConfig.getAddress() >> address
     }
 }
