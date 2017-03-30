@@ -21,6 +21,8 @@ import com.github.kristofa.brave.http.SpanNameProvider;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
+import com.twitter.zipkin.gen.Endpoint;
+import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.http.client.HttpClient;
@@ -30,7 +32,9 @@ import zipkin.Span;
 import zipkin.reporter.Reporter;
 
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 import static com.google.inject.Scopes.SINGLETON;
 
@@ -92,15 +96,11 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public Brave getBrave(final Config config, final ServerConfig serverConfig) {
     Brave.Builder braveBuilder = new Brave.Builder(
         new RatpackServerClientLocalSpanState(
-            config.serviceName,
-            ByteBuffer.wrap(
-                serverConfig.getAddress() != null
-                ?
-                serverConfig.getAddress().getAddress()
-                :
-                InetAddress.getLoopbackAddress().getAddress()
-            ).getInt(),
-            serverConfig.getPort()
+                buildLocalEndpoint(
+                        config.serviceName,
+                        serverConfig.getPort(),
+                        serverConfig.getAddress()
+                )
         )
     );
     if (config.spanReporter != null) {
@@ -113,6 +113,30 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       braveBuilder.traceSampler(config.sampler);
     }
     return braveBuilder.build();
+  }
+
+  Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
+    Endpoint.Builder builder = Endpoint.builder()
+            .serviceName(serviceName)
+            .port(port);
+    InetAddress address = configAddress != null ? configAddress : getSiteLocalAddress();
+    if (address.getAddress().length == 4) {
+      builder.ipv4(ByteBuffer.wrap(address.getAddress()).getInt());
+    } else if (address.getAddress().length == 16) {
+      builder.ipv6(address.getAddress());
+    }
+    return builder.build();
+  }
+
+  InetAddress getSiteLocalAddress() {
+    try {
+      return Collections.list(NetworkInterface.getNetworkInterfaces()).stream()
+              .flatMap(i -> Collections.list(i.getInetAddresses()).stream())
+              .filter(InetAddress::isSiteLocalAddress)
+              .findAny().get();
+    } catch (Exception e) {
+      return InetAddress.getLoopbackAddress();
+    }
   }
 
   @Provides

@@ -37,22 +37,16 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
   private final MDCProxy mdc;
   private final Endpoint endpoint;
 
-  public RatpackServerClientLocalSpanState(final String serviceName, int ip, int port) {
-    this(serviceName, ip, port, Execution::current, new DefaultMDCProxyImpl());
+  public RatpackServerClientLocalSpanState(final Endpoint endpoint,
+                                           final Supplier<MutableRegistry> registry,
+                                           final MDCProxy mdc) {
+    this.registry = registry;
+    this.endpoint = endpoint;
+    this.mdc = mdc;
   }
 
-  RatpackServerClientLocalSpanState(final String serviceName,
-                                    int ip,
-                                    int port,
-                                    final Supplier<MutableRegistry> registry,
-                                    final MDCProxy mdc) {
-    this.registry = registry;
-    this.endpoint = Endpoint.builder()
-                            .serviceName(serviceName)
-                            .ipv4(ip)
-                            .port(port)
-                            .build();
-    this.mdc = mdc;
+  public RatpackServerClientLocalSpanState(final Endpoint endpoint) {
+    this(endpoint, Execution::current, new DefaultMDCProxyImpl());
   }
 
   @Override
