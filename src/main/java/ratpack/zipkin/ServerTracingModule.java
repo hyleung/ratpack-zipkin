@@ -15,28 +15,29 @@
  */
 package ratpack.zipkin;
 
-import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.http.SpanNameProvider;
+import brave.Tracer;
+import brave.sampler.Sampler;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
-import com.twitter.zipkin.gen.Endpoint;
+import com.google.inject.multibindings.OptionalBinder;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.nio.ByteBuffer;
+import java.util.Collections;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.http.client.HttpClient;
 import ratpack.server.ServerConfig;
-import ratpack.zipkin.internal.*;
+import ratpack.zipkin.internal.DefaultServerTracingHandler;
+import ratpack.zipkin.internal.DefaultSpanNameProvider;
+import ratpack.zipkin.internal.RatpackCurrentTraceContext;
+import ratpack.zipkin.internal.ZipkinHttpClientImpl;
+import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.reporter.Reporter;
-
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-
-import static com.google.inject.Scopes.SINGLETON;
 
 /**
  * Module for ZipKin distributed tracing.
@@ -44,78 +45,32 @@ import static com.google.inject.Scopes.SINGLETON;
 public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.Config> {
   @Override
   protected void configure() {
-    bind(ServerRequestAdapterFactory.class).in(SINGLETON);
-    bind(ServerResponseAdapterFactory.class).in(SINGLETON);
     bind(ServerTracingHandler.class).to(DefaultServerTracingHandler.class);
-    Provider<ServerTracingHandler> serverTracingHandlerProviderProvider = getProvider(ServerTracingHandler.class);
-
-    bind(ClientRequestAdapterFactory.class).in(SINGLETON);
-    bind(ClientResponseAdapterFactory.class).in(SINGLETON);
+    Provider<ServerTracingHandler> serverTracingHandlerProviderProvider =
+        getProvider(ServerTracingHandler.class);
 
 
     bind(HttpClient.class).annotatedWith(Zipkin.class).to(ZipkinHttpClientImpl.class);
-    Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding().toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
+
+    OptionalBinder.newOptionalBinder(binder(), SpanNameProvider.class)
+        .setDefault().to(DefaultSpanNameProvider.class).in(Scopes.SINGLETON);
+
+    Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding()
+        .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
   }
 
   @Provides
-  public SpanNameProvider spanNameProvider(final Config config) {
-    return config.spanNameProvider;
+  public Tracer getTracer(final Config config, final ServerConfig serverConfig) {
+    return Tracer.newBuilder()
+        .sampler(config.sampler)
+        .currentTraceContext(new RatpackCurrentTraceContext())
+        .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(), serverConfig.getAddress()))
+        .localServiceName(config.serviceName)
+        .reporter(config.spanReporter)
+        .build();
   }
 
-  @Provides
-  public RequestAnnotationExtractor requestAnnotationExtractorFunc(final Config config) {
-    return config.requestAnnotationFunc;
-  }
-
-  @Provides
-  public ResponseAnnotationExtractor responseAnnotationExtractorFunc(final Config config) {
-    return config.responseAnnotationFunc;
-  }
-
-  @Provides
-  public ServerResponseInterceptor serverResponseInterceptor(final Brave brave) {
-    return new ServerResponseInterceptor(brave.serverTracer());
-  }
-
-  @Provides
-  public ServerRequestInterceptor serverRequestInterceptor(final Brave brave) {
-    return new ServerRequestInterceptor(brave.serverTracer());
-  }
-
-  @Provides
-  public ClientRequestInterceptor clientRequestInterceptor(final Brave brave) {
-    return new ClientRequestInterceptor(brave.clientTracer());
-  }
-
-  @Provides
-  public ClientResponseInterceptor clientResponseInterceptor(final Brave brave) {
-    return new ClientResponseInterceptor(brave.clientTracer());
-  }
-
-  @Provides
-  public Brave getBrave(final Config config, final ServerConfig serverConfig) {
-    Brave.Builder braveBuilder = new Brave.Builder(
-        new RatpackServerClientLocalSpanState(
-                buildLocalEndpoint(
-                        config.serviceName,
-                        serverConfig.getPort(),
-                        serverConfig.getAddress()
-                )
-        )
-    );
-    if (config.spanReporter != null) {
-      braveBuilder.reporter(config.spanReporter);
-    }
-    else if (config.spanCollector != null) {
-      braveBuilder.spanCollector(config.spanCollector);
-    }
-    if (config.sampler != null) {
-      braveBuilder.traceSampler(config.sampler);
-    }
-    return braveBuilder.build();
-  }
-
-  Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
+  private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
     Endpoint.Builder builder = Endpoint.builder()
             .serviceName(serviceName)
             .port(port);
@@ -128,52 +83,28 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     return builder.build();
   }
 
-  InetAddress getSiteLocalAddress() {
+  private static InetAddress getSiteLocalAddress() {
     try {
       return Collections.list(NetworkInterface.getNetworkInterfaces()).stream()
               .flatMap(i -> Collections.list(i.getInetAddresses()).stream())
               .filter(InetAddress::isSiteLocalAddress)
-              .findAny().get();
+              .findAny().orElse(InetAddress.getLoopbackAddress());
     } catch (Exception e) {
       return InetAddress.getLoopbackAddress();
     }
   }
 
-  @Provides
-  public LocalTracer localTracer(final Brave brave) {
-    return brave.localTracer();
-  }
 
   /**
    * Configuration class for {@link ServerTracingModule}.
    */
   public static class Config {
     private String serviceName = "unknown";
-    private SpanCollector spanCollector;
-    private Reporter<Span> spanReporter;
-    private Sampler sampler;
-    private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
-    private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
-    private ResponseAnnotationExtractor responseAnnotationFunc = ResponseAnnotationExtractor.DEFAULT;
+    private Reporter<Span> spanReporter = Reporter.NOOP;
+    private Sampler sampler = Sampler.NEVER_SAMPLE;
 
     public Config serviceName(final String serviceName) {
       this.serviceName = serviceName;
-      return this;
-    }
-
-    /**
-     * Configure the module to use the specified {@link SpanCollector}.
-     *
-     * @param spanCollector the span collector
-     *
-     * @return the Config instance
-     * @deprecated {@link SpanCollector} was deprecated in Brave 3.14.0.
-     *
-     * Use {@link ServerTracingModule.Config#spanReporter(Reporter)} instead.
-     */
-    @Deprecated
-    public Config spanCollector(final SpanCollector spanCollector) {
-      this.spanCollector = spanCollector;
       return this;
     }
 
@@ -184,20 +115,6 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     public Config sampler(final Sampler sampler) {
       this.sampler = sampler;
-      return this;
-    }
-    public Config spanNameProvider(final SpanNameProvider spanNameProvider) {
-      this.spanNameProvider = spanNameProvider;
-      return this;
-    }
-
-    public Config requestAnnotations(final RequestAnnotationExtractor func) {
-      this.requestAnnotationFunc = func;
-      return this;
-    }
-
-    public Config responseAnnotations(final ResponseAnnotationExtractor func) {
-      this.responseAnnotationFunc = func;
       return this;
     }
 
