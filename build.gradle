@@ -32,9 +32,9 @@ repositories {
     jcenter()
 }
 dependencies {
-    compile 'io.ratpack:ratpack-guice:1.4.1'
+    compile 'io.ratpack:ratpack-guice:1.4.5'
     compile 'org.slf4j:slf4j-api:1.7.13'
-    compile 'io.zipkin.brave:brave-http:4.0.0'
+    compile 'io.zipkin.brave:brave:4.1.0'
     testCompile 'junit:junit:4.12'
     testCompile 'org.assertj:assertj-core:3.4.1'
     testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage

@@ -15,43 +15,41 @@
  */
 package ratpack.zipkin.internal;
 
-import com.github.kristofa.brave.ClientRequestInterceptor;
-import com.github.kristofa.brave.ClientResponseInterceptor;
+import brave.Span;
+import brave.Tracer;
 import io.netty.buffer.ByteBufAllocator;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Optional;
+import javax.inject.Inject;
+import ratpack.api.Nullable;
 import ratpack.exec.Promise;
+import ratpack.exec.Result;
 import ratpack.func.Action;
 import ratpack.http.HttpMethod;
 import ratpack.http.client.HttpClient;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
 import ratpack.http.client.StreamedResponse;
-
-import javax.inject.Inject;
-import java.net.URI;
-import java.time.Duration;
-import java.util.Optional;
+import ratpack.zipkin.SpanNameProvider;
+import zipkin.Constants;
+import zipkin.TraceKeys;
 
 /**
  * Decorator that adds Zipkin client logging around {@link HttpClient}.
  */
 public class ZipkinHttpClientImpl implements HttpClient {
+
     private final HttpClient delegate;
-    private final ClientRequestInterceptor requestInterceptor;
-    private final ClientResponseInterceptor responseInterceptor;
-    private final ClientRequestAdapterFactory requestAdapterFactory;
-    private final ClientResponseAdapterFactory responseAdapterFactory;
+    private final Tracer tracer;
+    private final SpanNameProvider spanNameProvider;
 
     @Inject
-    public ZipkinHttpClientImpl(final HttpClient delegate,
-                                final ClientRequestInterceptor requestInterceptor,
-                                final ClientResponseInterceptor responseInterceptor,
-                                final ClientRequestAdapterFactory requestAdapterFactory,
-                                final ClientResponseAdapterFactory responseAdapterFactory) {
+    public ZipkinHttpClientImpl(final HttpClient delegate, final Tracer tracer, final
+        SpanNameProvider spanNameProvider) {
         this.delegate = delegate;
-        this.requestInterceptor = requestInterceptor;
-        this.responseInterceptor = responseInterceptor;
-        this.requestAdapterFactory = requestAdapterFactory;
-        this.responseAdapterFactory = responseAdapterFactory;
+        this.tracer = tracer;
+        this.spanNameProvider = spanNameProvider;
     }
 
     @Override
@@ -81,18 +79,24 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        return delegate.request(uri, tracedRequestAction(action))
-                .wiretap(receivedResponseResult -> responseInterceptor
-                        .handle(responseAdapterFactory.createAdapter(receivedResponseResult.getValue()))
-                );
+        final Span span = tracer.nextSpan();
+        try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+            span.start();
+            return delegate
+                .request(uri, actionWithSpan(action, span))
+                .wiretap(response -> responseWithSpan(response, span));
+        } // span.finish() is called after the response is handled.
     }
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
-        return delegate.requestStream(uri, tracedRequestAction(requestConfigurer))
-                .wiretap(streamedResponseResult -> responseInterceptor
-                        .handle(responseAdapterFactory.createAdapter(streamedResponseResult.getValue()))
-                );
+        final Span span = tracer.nextSpan();
+        try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+            span.start();
+            return delegate
+                .requestStream(uri, actionWithSpan(requestConfigurer, span))
+                .wiretap(response -> streamedResponseWithSpan(response, span));
+        } // span.finish() is called after the response is handled.
     }
 
     @Override
@@ -105,14 +109,63 @@ public class ZipkinHttpClientImpl implements HttpClient {
         return request(uri, requestConfigurer.prepend(RequestSpec::post));
     }
 
-    private Action<? super RequestSpec> tracedRequestAction(final Action<? super RequestSpec> action) {
-        return action.append(requestSpec -> {
-            MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(requestSpec);
+    private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final Span span) {
+        return (request -> {
+            MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(request);
+            span.start();
             action.execute(captor);
-            HttpMethod capturedMethod = Optional.ofNullable(captor.getCapturedMethod()).orElse(HttpMethod.GET);
-            requestInterceptor
-                    .handle(requestAdapterFactory.createAdaptor(requestSpec.method(capturedMethod), capturedMethod.getName()));
+            span.name(spanNameProvider.getName(new DefaultRequestSpecNameAdapter(captor)));
+            span.tag(TraceKeys.HTTP_URL, captor.getUri().toString());
         });
+    }
+
+    private void streamedResponseWithSpan(Result<StreamedResponse> response, Span span) {
+        resultWithSpan(response, () -> response.getValue().getStatusCode(), span);
+    }
+
+    private void responseWithSpan(Result<ReceivedResponse> response, Span span) {
+        resultWithSpan(response, () -> response.getValue().getStatusCode(), span);
+    }
+
+    private void resultWithSpan(Result<?> result, StatusCode statusCode, Span span) {
+        if (result.isError()) {
+            String message = result.getThrowable().getMessage();
+            if (message != null) {
+                span.tag(Constants.ERROR, result.getThrowable().getClass().getSimpleName());
+            }
+        } else {
+            int status = statusCode.getStatusCode();
+            if (status < 200 || status > 399) {
+                span.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(status));
+            } else if (status > 499) {
+                span.tag(Constants.ERROR, "server error " + status);
+            }
+        }
+
+        span.finish();
+    }
+
+    private interface StatusCode {
+        int getStatusCode();
+    }
+
+    private static final class DefaultRequestSpecNameAdapter implements
+        SpanNameProvider.SpanNameProviderAdapter {
+        private final MethodCapturingRequestSpec request;
+
+        DefaultRequestSpecNameAdapter(MethodCapturingRequestSpec request) {
+            this.request = request;
+        }
+
+        @Override
+        public String getUri() {
+            return this.request.getUri().toString();
+        }
+
+        @Override
+        public HttpMethod getMethod() {
+            return Optional.ofNullable(request.getCapturedMethod()).orElse(HttpMethod.GET);
+        }
     }
 
 }
