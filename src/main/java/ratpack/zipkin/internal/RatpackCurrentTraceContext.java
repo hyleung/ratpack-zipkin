@@ -22,7 +22,12 @@ public final class RatpackCurrentTraceContext extends CurrentTraceContext {
     return registrySupplier.get()
         .maybeGet(TraceContextTypeValue.class)
         .map(TypedValue::get)
-        .orElse(null);
+        .orElseGet(() -> (Execution.isManagedThread())
+              ? Execution.current()
+                .maybeGet(TraceContextTypeValue.class)
+                .map(TypedValue::get)
+                .orElse(null)
+              : null);
   }
 
   @Override public Scope newScope(TraceContext currentSpan) {
@@ -31,8 +36,8 @@ public final class RatpackCurrentTraceContext extends CurrentTraceContext {
     return () -> registrySupplier.get().add(new TraceContextTypeValue(previous));
   }
 
-  private class TraceContextTypeValue extends TypedValue<TraceContext> {
-    TraceContextTypeValue(final TraceContext value) {
+  public static final class TraceContextTypeValue extends TypedValue<TraceContext> {
+    public TraceContextTypeValue(final TraceContext value) {
       super(value);
     }
   }
