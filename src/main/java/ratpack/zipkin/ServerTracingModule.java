@@ -15,13 +15,21 @@
  */
 package ratpack.zipkin;
 
-import com.github.kristofa.brave.*;
+import brave.Tracer;
+import brave.sampler.Sampler;
+import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.ClientRequestInterceptor;
+import com.github.kristofa.brave.ClientResponseInterceptor;
+import com.github.kristofa.brave.LocalTracer;
+import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.TracerAdapter;
 import com.github.kristofa.brave.http.DefaultSpanNameProvider;
 import com.github.kristofa.brave.http.SpanNameProvider;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
-import com.twitter.zipkin.gen.Endpoint;
+import zipkin.Endpoint;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
@@ -93,26 +101,29 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   }
 
   @Provides
-  public Brave getBrave(final Config config, final ServerConfig serverConfig) {
-    Brave.Builder braveBuilder = new Brave.Builder(
-        new RatpackServerClientLocalSpanState(
-                buildLocalEndpoint(
-                        config.serviceName,
-                        serverConfig.getPort(),
-                        serverConfig.getAddress()
-                )
-        )
-    );
+  public Brave getBrave(final Tracer tracer) {
+    return TracerAdapter.newBrave(tracer);
+  }
+
+  @Provides
+  public Tracer getTracer(final Config config, final ServerConfig serverConfig) {
+    Tracer.Builder builder = Tracer.newBuilder();
+
+    builder.localEndpoint(buildLocalEndpoint(
+        config.serviceName,
+        serverConfig.getPort(),
+        serverConfig.getAddress()
+    ));
+    builder.currentTraceContext(new RatpackCurrentTraceContext());
+
     if (config.spanReporter != null) {
-      braveBuilder.reporter(config.spanReporter);
+      builder.reporter(config.spanReporter);
     }
-    else if (config.spanCollector != null) {
-      braveBuilder.spanCollector(config.spanCollector);
-    }
+
     if (config.sampler != null) {
-      braveBuilder.traceSampler(config.sampler);
+      builder.sampler(config.sampler);
     }
-    return braveBuilder.build();
+    return builder.build();
   }
 
   Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
@@ -149,7 +160,6 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
    */
   public static class Config {
     private String serviceName = "unknown";
-    private SpanCollector spanCollector;
     private Reporter<Span> spanReporter;
     private Sampler sampler;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
@@ -158,22 +168,6 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     public Config serviceName(final String serviceName) {
       this.serviceName = serviceName;
-      return this;
-    }
-
-    /**
-     * Configure the module to use the specified {@link SpanCollector}.
-     *
-     * @param spanCollector the span collector
-     *
-     * @return the Config instance
-     * @deprecated {@link SpanCollector} was deprecated in Brave 3.14.0.
-     *
-     * Use {@link ServerTracingModule.Config#spanReporter(Reporter)} instead.
-     */
-    @Deprecated
-    public Config spanCollector(final SpanCollector spanCollector) {
-      this.spanCollector = spanCollector;
       return this;
     }
 
