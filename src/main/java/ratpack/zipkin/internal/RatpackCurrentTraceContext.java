@@ -9,10 +9,11 @@ import java.util.function.Supplier;
 
 public class RatpackCurrentTraceContext extends CurrentTraceContext {
 
-  final Supplier<MutableRegistry> registry;
+  final Supplier<MutableRegistry> registrySupplier;
 
-  RatpackCurrentTraceContext(final Supplier<MutableRegistry> registry) {
-    this.registry = registry;
+  RatpackCurrentTraceContext(final Supplier<MutableRegistry> registrySupplier) {
+    this.registrySupplier = registrySupplier;
+    this.registrySupplier.get().add(new TraceContextHolder(null));
   }
 
   public RatpackCurrentTraceContext() {
@@ -21,11 +22,31 @@ public class RatpackCurrentTraceContext extends CurrentTraceContext {
 
   @Override
   public TraceContext get() {
-    throw new RuntimeException("Not implemented!");
+    return registrySupplier
+        .get()
+        .get(TraceContextHolder.class)
+        .getContext();
+
   }
 
   @Override
   public Scope newScope(final TraceContext currentSpan) {
-    throw new RuntimeException("Not implemented!");
+    final TraceContext previous = get();
+    registrySupplier
+        .get()
+        .add(TraceContextHolder.class, new TraceContextHolder(currentSpan));
+    return () -> registrySupplier.get().add(TraceContextHolder.class, new TraceContextHolder(previous));
+  }
+
+  private static class TraceContextHolder {
+    private final TraceContext context;
+
+    public TraceContextHolder(final TraceContext context) {
+      this.context = context;
+    }
+
+    public TraceContext getContext() {
+      return context;
+    }
   }
 }

@@ -23,13 +23,11 @@ class RatpackCurrentTraceContextSpec extends Specification {
 
     def 'When creating a new scope, the trace context new'() {
         given:
-            def initialContext = Stub(TraceContext)
+            def next = Stub(TraceContext)
         when:
-            def scope = traceContext.newScope(initialContext)
+            def scope = traceContext.newScope(next)
         then:
             scope != null
-        and:
-            traceContext.get() != initialContext
     }
 
     def 'When a new scope is closed, the trace context should set back to the previous context'() {
@@ -40,6 +38,6 @@ class RatpackCurrentTraceContextSpec extends Specification {
         when:
             scope.close()
         then:
-            traceContext.get() == initialContext
+            traceContext.get() == null
     }
 }
