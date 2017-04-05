@@ -161,7 +161,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   public static class Config {
     private String serviceName = "unknown";
     private Reporter<Span> spanReporter;
-    private Sampler sampler;
+    private Sampler sampler = Sampler.ALWAYS_SAMPLE;
     private SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
     private RequestAnnotationExtractor requestAnnotationFunc = RequestAnnotationExtractor.DEFAULT;
     private ResponseAnnotationExtractor responseAnnotationFunc = ResponseAnnotationExtractor.DEFAULT;
