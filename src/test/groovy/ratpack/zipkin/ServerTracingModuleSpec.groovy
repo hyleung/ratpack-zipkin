@@ -3,6 +3,7 @@ package ratpack.zipkin
 import brave.sampler.Sampler
 import ratpack.groovy.test.embed.GroovyEmbeddedApp
 import ratpack.guice.Guice
+import ratpack.zipkin.support.TestReporter
 import spock.lang.Specification
 import zipkin.Span
 import zipkin.reporter.Reporter

@@ -4,7 +4,7 @@ import brave.propagation.TraceContext;
 import java.util.Arrays;
 import ratpack.exec.Promise;
 import ratpack.exec.util.ParallelBatch;
-import ratpack.zipkin.internal.RatpackCurrentTraceContext.TraceContextTypeValue;
+import ratpack.zipkin.internal.RatpackCurrentTraceContext.TraceContextHolder;
 
 public class TracedParallelBatch {
 
@@ -24,7 +24,8 @@ public class TracedParallelBatch {
    */
   static <T> ParallelBatch<T> of(final TraceContext traceContext, Iterable<? extends Promise<T>> promises) {
     return ParallelBatch.of(promises)
-        .execInit(execution -> execution.add(new TraceContextTypeValue(traceContext)));
+        .execInit(execution ->
+            execution.add(TraceContextHolder.class, new TraceContextHolder(traceContext)));
   }
 
   static <T> ParallelBatch<T> of(final TraceContext traceContext, Promise<T>... promises) {

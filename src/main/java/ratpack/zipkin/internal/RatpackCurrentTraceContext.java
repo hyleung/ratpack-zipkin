@@ -18,39 +18,33 @@ public final class RatpackCurrentTraceContext extends CurrentTraceContext {
     this(Execution::current);
   }
 
-  @Override public TraceContext get() {
+  @Override
+  public TraceContext get() {
     return registrySupplier.get()
-        .maybeGet(TraceContextTypeValue.class)
-        .map(TypedValue::get)
+        .maybeGet(TraceContextHolder.class)
+        .map(TraceContextHolder::getContext)
         .orElseGet(() -> (Execution.isManagedThread())
               ? Execution.current()
-                .maybeGet(TraceContextTypeValue.class)
-                .map(TypedValue::get)
+                .maybeGet(TraceContextHolder.class)
+                .map(TraceContextHolder::getContext)
                 .orElse(null)
               : null);
   }
 
-  @Override public Scope newScope(TraceContext currentSpan) {
+  @Override
+  public Scope newScope(TraceContext currentSpan) {
     final TraceContext previous = get();
-    registrySupplier.get().add(new TraceContextTypeValue(currentSpan));
-    return () -> registrySupplier.get().add(new TraceContextTypeValue(previous));
+    registrySupplier.get().add(TraceContextHolder.class, new TraceContextHolder(currentSpan));
+    return () -> registrySupplier.get().add(new TraceContextHolder(previous));
   }
 
-  public static final class TraceContextTypeValue extends TypedValue<TraceContext> {
-    public TraceContextTypeValue(final TraceContext value) {
-      super(value);
+  public static final class TraceContextHolder {
+    private final TraceContext context;
+    public TraceContextHolder(final TraceContext context) {
+      this.context = context;
     }
-  }
-
-  private abstract static class TypedValue<T> {
-    private T value;
-
-    TypedValue(final T value) {
-      this.value = value;
-    }
-
-    T get() {
-      return value;
+    public TraceContext getContext() {
+      return this.context;
     }
   }
 
