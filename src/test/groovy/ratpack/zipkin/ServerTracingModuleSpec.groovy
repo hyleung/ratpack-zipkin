@@ -108,42 +108,32 @@ class ServerTracingModuleSpec extends Specification {
             0 * spanReporter.report(_)
     }
 
-    @Ignore
-    def 'ServerConfig ipv4 address Should override brave local address' () {
+    def 'buildLocalEndpoint should build ipv4 endpoint' () {
         given:
-        int port = 12345
-        byte[] addressBytes = [255, 0, 0, 0]
-        InetAddress address = InetAddress.getByAddress(addressBytes)
-        int addressAsInt = 255 << 24
-        ServerTracingModule.Config config = new ServerTracingModule.Config()
-        ServerConfig serverConfig = Mock(ServerConfig)
-
+            short port = 12345
+            byte[] addressBytes = [255, 0, 0, 0]
+            InetAddress address = InetAddress.getByAddress(addressBytes)
+            int addressAsInt = 255 << 24
+            ServerTracingModule tracingModule = new ServerTracingModule()
         when:
-        Tracer tracer = new ServerTracingModule().getTracer(config, serverConfig)
-
+            def localEndpoint = tracingModule.buildLocalEndpoint("any-service", port, address)
         then:
-//        tracer.localSpanThreadBinder().state instanceof RatpackServerClientLocalSpanState
-//        ((RatpackServerClientLocalSpanState) tracer.localSpanThreadBinder().state).endpoint().ipv4 == addressAsInt
-        1 * serverConfig.getPort() >> port
-        1 * serverConfig.getAddress() >> address
+            localEndpoint.ipv4 == addressAsInt
+        and:
+            localEndpoint.port == port
     }
 
-    @Ignore
-    def 'ServerConfig ipv6 address Should override brave local address' () {
+    def 'buildLocalEndpoint for ipv6 should build ipv6 endpoint' () {
         given:
-        int port = 12345
-        byte[] addressBytes = [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        InetAddress address = InetAddress.getByAddress(addressBytes)
-        ServerTracingModule.Config config = new ServerTracingModule.Config()
-        ServerConfig serverConfig = Mock(ServerConfig)
-
+            short port = 12345
+            byte[] addressBytes = [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            InetAddress address = InetAddress.getByAddress(addressBytes)
+            ServerTracingModule tracingModule = new ServerTracingModule()
         when:
-        Tracer tracer = new ServerTracingModule().getTracer(config, serverConfig)
-
+            def localEndpoint = tracingModule.buildLocalEndpoint("any-service", port, address)
         then:
-//        tracer.localSpanThreadBinder().state instanceof RatpackServerClientLocalSpanState
-//        ((RatpackServerClientLocalSpanState) tracer.localSpanThreadBinder().state).endpoint().ipv6 == addressBytes
-        1 * serverConfig.getPort() >> port
-        1 * serverConfig.getAddress() >> address
+            localEndpoint.ipv6 == addressBytes
+        and:
+            localEndpoint.port == port
     }
 }
