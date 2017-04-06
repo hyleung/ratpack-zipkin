@@ -69,6 +69,8 @@ class ServerTracingModuleSpec extends Specification {
 		reporter.getSpans().size() == 1
 		Span span = reporter.getSpans().get(0)
 		span.name == "get"
+		span.annotations.findAll {it.value == "ss"}.size() == 1
+		span.annotations.findAll {it.value == "sr"}.size() == 1
 	}
 
 	def 'Should not collect spans with 0 pct. sampling'() {

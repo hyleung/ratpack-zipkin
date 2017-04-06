@@ -40,7 +40,8 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     final Span span = (contextOrSamplingFlags.context() != null
         ? tracer.joinSpan(contextOrSamplingFlags.context())
         : tracer.newTrace(contextOrSamplingFlags.samplingFlags()))
-        .name(spanNameProvider.getName(new DefaultRequestSpanNameAdapter(ctx.getRequest())));
+        .name(spanNameProvider.getName(new DefaultRequestSpanNameAdapter(ctx.getRequest())))
+        .kind(Span.Kind.SERVER);
 
     Request request = ctx.getRequest();
     span.tag(TraceKeys.HTTP_URL, request.getUri());
