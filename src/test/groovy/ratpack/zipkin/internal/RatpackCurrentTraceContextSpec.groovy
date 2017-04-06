@@ -8,10 +8,11 @@ import spock.lang.Specification
 
 class RatpackCurrentTraceContextSpec extends Specification {
     CurrentTraceContext traceContext
-
+    RatpackCurrentTraceContext.MDCProxy mdc
     def setup() {
         def registry = SimpleMutableRegistry.newInstance()
-        traceContext = new RatpackCurrentTraceContext({ registry })
+        mdc = Mock(RatpackCurrentTraceContext.MDCProxy)
+        traceContext = new RatpackCurrentTraceContext({ registry }, mdc)
     }
 
     def "Should return null trace context if there isn't one"() {
@@ -39,5 +40,33 @@ class RatpackCurrentTraceContextSpec extends Specification {
             scope.close()
         then:
             traceContext.get() == null
+    }
+
+    def 'When creating a new scope with no parent span, should record ids in MDC'() {
+        given:
+            def next = TraceContext.newBuilder()
+                            .traceId(1L)
+                            .spanId(1l)
+                            .build()
+        when:
+            traceContext.newScope(next)
+        then:
+            1 * mdc.put("X-B3-TraceId", _ as String)
+            1 * mdc.put("X-B3-SpanId", _ as String)
+    }
+
+    def 'When creating a new scope with a parent span, should record ids in MDC'() {
+        given:
+            def next = TraceContext.newBuilder()
+                    .traceId(1L)
+                    .spanId(1l)
+                    .parentId(1L)
+                    .build()
+        when:
+            traceContext.newScope(next)
+        then:
+            1 * mdc.put("X-B3-TraceId", _ as String)
+            1 * mdc.put("X-B3-SpanId", _ as String)
+            1 * mdc.put("X-B3-ParentSpanId", _ as String)
     }
 }
