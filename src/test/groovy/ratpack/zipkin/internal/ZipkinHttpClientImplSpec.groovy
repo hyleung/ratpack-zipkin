@@ -55,6 +55,8 @@ class ZipkinHttpClientImplSpec extends Specification {
 		span.name == "get"
 		span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}.size() == 0
 		span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}.size() == 1
+		span.annotations.findAll {it.value == "cs"}.size() == 1
+		span.annotations.findAll {it.value == "cr"}.size() == 1
 
 		1 * httpClient.request(_, _) >> { URI u, Action<? super RequestSpec> a ->
 			assert u == uri

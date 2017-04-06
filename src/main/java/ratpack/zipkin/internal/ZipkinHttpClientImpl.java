@@ -78,7 +78,7 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        final Span span = tracer.nextSpan();
+        final Span span = tracer.nextSpan().kind(Span.Kind.CLIENT);
         try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
             return delegate
                 .request(uri, actionWithSpan(action, span))
@@ -88,7 +88,7 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
-        final Span span = tracer.nextSpan();
+        final Span span = tracer.nextSpan().kind(Span.Kind.CLIENT);
         try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
             return delegate
                 .requestStream(uri, actionWithSpan(requestConfigurer, span))
