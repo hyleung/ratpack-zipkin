@@ -22,7 +22,6 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
 import javax.inject.Inject;
-import ratpack.api.Nullable;
 import ratpack.exec.Promise;
 import ratpack.exec.Result;
 import ratpack.func.Action;
@@ -81,7 +80,6 @@ public class ZipkinHttpClientImpl implements HttpClient {
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
         final Span span = tracer.nextSpan();
         try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-            span.start();
             return delegate
                 .request(uri, actionWithSpan(action, span))
                 .wiretap(response -> responseWithSpan(response, span));
@@ -92,7 +90,6 @@ public class ZipkinHttpClientImpl implements HttpClient {
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
         final Span span = tracer.nextSpan();
         try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-            span.start();
             return delegate
                 .requestStream(uri, actionWithSpan(requestConfigurer, span))
                 .wiretap(response -> streamedResponseWithSpan(response, span));
@@ -110,12 +107,13 @@ public class ZipkinHttpClientImpl implements HttpClient {
     }
 
     private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final Span span) {
-        return (request -> {
+        return action.append(request -> {
             MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(request);
             span.start();
             action.execute(captor);
-            span.name(spanNameProvider.getName(new DefaultRequestSpecNameAdapter(captor)));
-            span.tag(TraceKeys.HTTP_URL, captor.getUri().toString());
+            DefaultRequestSpecNameAdapter adapter = new DefaultRequestSpecNameAdapter(captor);
+            span.name(spanNameProvider.getName(adapter));
+            span.tag(TraceKeys.HTTP_URL, adapter.getUri());
         });
     }
 

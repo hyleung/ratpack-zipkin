@@ -1,4 +1,4 @@
-package ratpack.zipkin
+package ratpack.zipkin.support
 
 import zipkin.Span
 import zipkin.reporter.Reporter
