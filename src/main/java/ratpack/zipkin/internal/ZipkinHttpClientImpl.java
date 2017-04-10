@@ -125,7 +125,7 @@ public class ZipkinHttpClientImpl implements HttpClient {
         resultWithSpan(response, () -> response.getValue().getStatusCode(), span);
     }
 
-    private void resultWithSpan(Result<?> result, StatusCode statusCode, Span span) {
+    void resultWithSpan(Result<?> result, StatusCode statusCode, Span span) {
         if (result.isError()) {
             String message = result.getThrowable().getMessage();
             if (message != null) {
@@ -135,11 +135,11 @@ public class ZipkinHttpClientImpl implements HttpClient {
             int status = statusCode.getStatusCode();
             if (status < 200 || status > 399) {
                 span.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(status));
-            } else if (status > 499) {
+            }
+            if (status > 499) {
                 span.tag(Constants.ERROR, "server error " + status);
             }
         }
-
         span.finish();
     }
 
