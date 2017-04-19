@@ -4,7 +4,6 @@ import brave.Tracer
 import brave.sampler.Sampler
 import io.netty.handler.codec.http.HttpResponseStatus
 import ratpack.exec.Promise
-import ratpack.exec.Result
 import ratpack.func.Action
 import ratpack.http.HttpMethod
 import ratpack.http.client.HttpClient
@@ -66,9 +65,10 @@ class ZipkinHttpClientImplSpec extends Specification {
 			reporter.spans.size() == 1
 			Span span = reporter.spans.get(0)
 			span.name == method.name.toLowerCase()
-		and: //should contain the correct annotations
-			assertThat(span.annotations.findAll {it.value == "cs"}).isNotEmpty()
-			assertThat(span.annotations.findAll {it.value == "cr"}).isNotEmpty()
+		and: "should contain CS annotation"
+			assertThat(span.annotations.findAll {it.value == Constants.CLIENT_SEND}).isNotEmpty()
+		and: "should contain CR annotation"
+			assertThat(span.annotations.findAll {it.value == Constants.CLIENT_RECV}).isNotEmpty()
 		where:
 			method | _
 			HttpMethod.GET | _
@@ -90,8 +90,9 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}
 		then:
 			Span span = reporter.spans.get(0)
-		and: //should contain some binary annotations
+		and: "should not contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isEmpty()
+		and: "should contain http url annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
 		where:
 			status | _
@@ -115,8 +116,9 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}
 		then:
 			Span span = reporter.spans.get(0)
-		and: //should contain some binary annotations
+		and: "should contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isNotEmpty()
+		and: "should contain http url annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
 		where:
 			status | _
@@ -143,9 +145,11 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}
 		then:
 			Span span = reporter.spans.get(0)
-		and: //should contain some binary annotations
+		and: "should contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isNotEmpty()
+		and: "should contain http url annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
+		and: "should contain error annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == Constants.ERROR}).isNotEmpty()
 		where:
 			status | _
@@ -174,8 +178,9 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			response.getStatusCode() == 200
 			Span span = reporter.spans.get(0)
-		and: //should contain some binary annotations
+		and: "should not contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isEmpty()
+		and: "should contain http url annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
 	}
 }

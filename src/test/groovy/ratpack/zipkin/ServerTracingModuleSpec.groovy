@@ -85,8 +85,10 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.annotations.findAll { it.value == "ss" }.size() == 1
-			span.annotations.findAll { it.value == "sr" }.size() == 1
+		and: "should contain SS annotation"
+			span.annotations.findAll { it.value == Constants.SERVER_SEND }.size() == 1
+		and: "should contain SR annotation"
+			span.annotations.findAll { it.value == Constants.SERVER_RECV }.size() == 1
 	}
 
 	@Unroll
