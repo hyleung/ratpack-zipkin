@@ -6,10 +6,10 @@ coverage:
   status:
     project:
       default:
-        threshold: 5%
+        threshold: 15%
     patch:
       default:
-        threshold: 5%
+        threshold: 15%
     changes: false
     comment:
       layout: "header, diff"
