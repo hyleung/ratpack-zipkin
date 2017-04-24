@@ -56,10 +56,20 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
 
   @Override
   public Span getCurrentClientSpan() {
+
     return registry.get()
         .maybeGet(CurrentClientSpanValue.class)
         .map(TypedValue::get)
-        .orElse(null);
+        .orElseGet(() -> {
+          if (Execution.isManagedThread()) {
+            return Execution.current()
+                    .maybeGet(CurrentClientSpanValue.class)
+                    .map(TypedValue::get)
+                    .orElse(null);
+          } else {
+            return null;
+          }
+        });
   }
 
   @Override
@@ -67,7 +77,16 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     return registry.get()
         .maybeGet(CurrentLocalSpanValue.class)
         .map(TypedValue::get)
-        .orElse(null);
+        .orElseGet(() -> {
+          if (Execution.isManagedThread()) {
+            return Execution.current()
+                    .maybeGet(CurrentLocalSpanValue.class)
+                    .map(TypedValue::get)
+                    .orElse(null);
+          } else {
+            return null;
+          }
+        });
   }
 
   @Override
@@ -80,7 +99,16 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     return registry.get()
         .maybeGet(CurrentServerSpanValue.class)
         .map(TypedValue::get)
-        .orElse(ServerSpan.EMPTY);
+        .orElseGet(() -> {
+          if (Execution.isManagedThread()) {
+            return Execution.current()
+                    .maybeGet(CurrentServerSpanValue.class)
+                    .map(TypedValue::get)
+                    .orElse(ServerSpan.EMPTY);
+          } else {
+            return ServerSpan.EMPTY;
+          }
+        });
   }
 
   @Override
@@ -108,7 +136,7 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     return endpoint;
   }
 
-  private abstract class TypedValue<T> {
+  private abstract static class TypedValue<T> {
     private T value;
 
     TypedValue(final T value) {
@@ -120,20 +148,20 @@ public class RatpackServerClientLocalSpanState implements ServerClientAndLocalSp
     }
   }
 
-  private class CurrentLocalSpanValue extends TypedValue<Span> {
-    CurrentLocalSpanValue(final Span value) {
+  public static class CurrentLocalSpanValue extends TypedValue<Span> {
+    public CurrentLocalSpanValue(final Span value) {
       super(value);
     }
   }
 
-  private class CurrentClientSpanValue extends TypedValue<Span> {
-    CurrentClientSpanValue(final Span value) {
+  public static class CurrentClientSpanValue extends TypedValue<Span> {
+    public CurrentClientSpanValue(final Span value) {
       super(value);
     }
   }
 
-  private class CurrentServerSpanValue extends TypedValue<ServerSpan> {
-    CurrentServerSpanValue(final ServerSpan value) {
+  public static class CurrentServerSpanValue extends TypedValue<ServerSpan> {
+    public CurrentServerSpanValue(final ServerSpan value) {
       super(value);
     }
   }
