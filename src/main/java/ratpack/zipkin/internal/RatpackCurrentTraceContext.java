@@ -23,12 +23,7 @@ public final class RatpackCurrentTraceContext extends CurrentTraceContext {
     return registrySupplier.get()
         .maybeGet(TraceContextHolder.class)
         .map(TraceContextHolder::getContext)
-        .orElseGet(() -> (Execution.isManagedThread())
-              ? Execution.current()
-                .maybeGet(TraceContextHolder.class)
-                .map(TraceContextHolder::getContext)
-                .orElse(null)
-              : null);
+        .orElse(null);
   }
 
   @Override

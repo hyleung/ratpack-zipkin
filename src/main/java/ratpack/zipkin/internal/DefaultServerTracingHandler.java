@@ -2,7 +2,7 @@ package ratpack.zipkin.internal;
 
 import brave.Span;
 import brave.Tracer;
-import brave.propagation.Propagation;
+import brave.Tracing;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceContextOrSamplingFlags;
 import javax.inject.Inject;
@@ -20,16 +20,15 @@ import zipkin.TraceKeys;
  */
 public final class DefaultServerTracingHandler implements ServerTracingHandler {
 
-  private static final TraceContext.Extractor<Request> extractor =
-      Propagation.B3_STRING.extractor((Request r, String name) -> r.getHeaders().get(name));
-
-  private final Tracer tracer;
+  private final Tracing tracing;
   private final SpanNameProvider spanNameProvider;
+  private final TraceContext.Extractor<Request> extractor;
 
   @Inject
-  public DefaultServerTracingHandler(Tracer tracer, SpanNameProvider spanNameProvider) {
-    this.tracer = tracer;
+  public DefaultServerTracingHandler(Tracing tracing, SpanNameProvider spanNameProvider) {
+    this.tracing = tracing;
     this.spanNameProvider = spanNameProvider;
+    this.extractor = tracing.propagation().extractor((Request r, String name) -> r.getHeaders().get(name));
   }
 
   @Override
@@ -38,8 +37,8 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     TraceContextOrSamplingFlags contextOrSamplingFlags = extractor.extract(ctx.getRequest());
 
     final Span span = (contextOrSamplingFlags.context() != null
-        ? tracer.joinSpan(contextOrSamplingFlags.context())
-        : tracer.newTrace(contextOrSamplingFlags.samplingFlags()))
+        ? tracing.tracer().joinSpan(contextOrSamplingFlags.context())
+        : tracing.tracer().newTrace(contextOrSamplingFlags.samplingFlags()))
         .name(spanNameProvider.getName(new DefaultRequestSpanNameAdapter(ctx.getRequest())))
         .kind(Span.Kind.SERVER);
 
@@ -62,7 +61,7 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
       span.finish();
     });
 
-    try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+    try(Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
       span.start();
       ctx.next();
     }

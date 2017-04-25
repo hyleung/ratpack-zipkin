@@ -1,6 +1,6 @@
 package ratpack.zipkin.internal
 
-import brave.Tracer
+import brave.Tracing
 import brave.sampler.Sampler
 import io.netty.handler.codec.http.HttpResponseStatus
 import ratpack.exec.Promise
@@ -38,13 +38,13 @@ class ZipkinHttpClientImplSpec extends Specification {
 	def setup() {
 		reporter = new TestReporter()
 
-		Tracer tracer = Tracer.newBuilder()
+		Tracing tracing = Tracing.newBuilder()
 				.currentTraceContext(new RatpackCurrentTraceContext())
 				.reporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
 				.localServiceName("embedded")
 				.build()
 
-		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, tracer, new DefaultSpanNameProvider())
+		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, tracing, new DefaultSpanNameProvider())
 
 		httpClient.request(_ as URI, _ as Action) >> { URI u, Action<? super RequestSpec> a ->
 			a.execute(requestSpec)
