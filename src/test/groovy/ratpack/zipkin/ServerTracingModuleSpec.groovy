@@ -201,7 +201,7 @@ class ServerTracingModuleSpec extends Specification {
 			HttpResponseStatus.SWITCHING_PROTOCOLS | _
 	}
 
-	def 'Should report span with http status code binary annotation for 2xx (#status) responses'(HttpResponseStatus status) {
+	def 'Should report span with http status code binary annotation for 3xx (#status) responses'(HttpResponseStatus status) {
 		given:
 			def app = GroovyEmbeddedApp.of { server ->
 				server.registry(Guice.registry { binding ->

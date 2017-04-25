@@ -17,6 +17,8 @@ package ratpack.zipkin.internal;
 
 import brave.Span;
 import brave.Tracer;
+import brave.Tracing;
+import brave.propagation.TraceContext;
 import io.netty.buffer.ByteBufAllocator;
 import java.net.URI;
 import java.time.Duration;
@@ -26,6 +28,7 @@ import ratpack.exec.Promise;
 import ratpack.exec.Result;
 import ratpack.func.Action;
 import ratpack.http.HttpMethod;
+import ratpack.http.MutableHeaders;
 import ratpack.http.client.HttpClient;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
@@ -40,15 +43,17 @@ import zipkin.TraceKeys;
 public class ZipkinHttpClientImpl implements HttpClient {
 
     private final HttpClient delegate;
-    private final Tracer tracer;
+    private final Tracing tracing;
     private final SpanNameProvider spanNameProvider;
+    private final TraceContext.Injector<MutableHeaders> injector;
 
     @Inject
-    public ZipkinHttpClientImpl(final HttpClient delegate, final Tracer tracer, final
+    public ZipkinHttpClientImpl(final HttpClient delegate, final Tracing tracing, final
         SpanNameProvider spanNameProvider) {
         this.delegate = delegate;
-        this.tracer = tracer;
+        this.tracing = tracing;
         this.spanNameProvider = spanNameProvider;
+        this.injector = tracing.propagation().injector(MutableHeaders::set);
     }
 
     @Override
@@ -78,8 +83,8 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        final Span span = tracer.nextSpan().kind(Span.Kind.CLIENT);
-        try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+        final Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT);
+        try(Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
             return delegate
                 .request(uri, actionWithSpan(action, span))
                 .wiretap(response -> responseWithSpan(response, span));
@@ -88,8 +93,8 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
-        final Span span = tracer.nextSpan().kind(Span.Kind.CLIENT);
-        try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
+        final Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT);
+        try(Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
             return delegate
                 .requestStream(uri, actionWithSpan(requestConfigurer, span))
                 .wiretap(response -> streamedResponseWithSpan(response, span));
@@ -108,10 +113,11 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final Span span) {
         return action.append(request -> {
-            MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(request);
+            final MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(request);
+            injector.inject(span.context(), captor.getHeaders());
             span.start();
             action.execute(captor);
-            DefaultRequestSpecNameAdapter adapter = new DefaultRequestSpecNameAdapter(captor);
+            final DefaultRequestSpecNameAdapter adapter = new DefaultRequestSpecNameAdapter(captor);
             span.name(spanNameProvider.getName(adapter));
             span.tag(TraceKeys.HTTP_URL, adapter.getUri());
         });
@@ -133,10 +139,10 @@ public class ZipkinHttpClientImpl implements HttpClient {
             }
         } else {
             int status = statusCode.getStatusCode();
-            if (status < 200 || status > 399) {
+            if (status < 200 || status > 299) {
                 span.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(status));
             }
-            if (status > 499) {
+            if (status > 399) {
                 span.tag(Constants.ERROR, "server error " + status);
             }
         }

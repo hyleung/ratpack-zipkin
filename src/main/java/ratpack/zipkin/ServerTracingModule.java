@@ -15,7 +15,6 @@
  */
 package ratpack.zipkin;
 
-import brave.Tracer;
 import brave.Tracing;
 import brave.sampler.Sampler;
 import com.google.inject.Provider;
@@ -61,15 +60,14 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   }
 
   @Provides
-  public Tracer getTracer(final Config config, final ServerConfig serverConfig) {
+  public Tracing getTracing(final Config config, final ServerConfig serverConfig) {
     return Tracing.newBuilder()
         .sampler(config.sampler)
         .currentTraceContext(new RatpackCurrentTraceContext())
         .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(), serverConfig.getAddress()))
         .localServiceName(config.serviceName)
         .reporter(config.spanReporter)
-        .build()
-        .tracer();
+        .build();
   }
 
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
