@@ -11,7 +11,7 @@ Uses [Brave](https://github.com/openzipkin/brave) for the underlying Zipkin supp
 Using Gradle:
 
 ```
-compile 'com.github.hyleung:ratpack-zipkin:1.2.0'
+compile 'com.github.hyleung:ratpack-zipkin:1.2.1'
 ```
 
 Using Maven:
@@ -20,7 +20,7 @@ Using Maven:
 <dependency>
   <groupId>com.github.hyleung</groupId>
   <artifactId>ratpack-zipkin</artifactId>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
 </dependency>
 ```
 
