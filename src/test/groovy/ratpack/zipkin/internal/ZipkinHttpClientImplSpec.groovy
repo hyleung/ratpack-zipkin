@@ -3,7 +3,9 @@ package ratpack.zipkin.internal
 import brave.Tracing
 import brave.http.HttpTracing
 import brave.sampler.Sampler
+import io.netty.handler.codec.http.DefaultHttpHeaders
 import io.netty.handler.codec.http.HttpResponseStatus
+import ratpack.exec.Execution
 import ratpack.exec.Promise
 import ratpack.func.Action
 import ratpack.http.HttpMethod
@@ -11,6 +13,8 @@ import ratpack.http.client.HttpClient
 import ratpack.http.client.ReceivedResponse
 import ratpack.http.client.RequestSpec
 import ratpack.http.client.StreamedResponse
+import ratpack.http.internal.NettyHeadersBackedMutableHeaders
+import ratpack.registry.MutableRegistry
 import ratpack.test.exec.ExecHarness
 import ratpack.zipkin.support.TestReporter
 import spock.lang.AutoCleanup
@@ -19,6 +23,8 @@ import spock.lang.Unroll
 import zipkin.Constants
 import zipkin.Span
 import zipkin.TraceKeys
+
+import java.util.function.Supplier
 
 import static org.assertj.core.api.Assertions.assertThat
 
@@ -39,20 +45,29 @@ class ZipkinHttpClientImplSpec extends Specification {
 	def setup() {
 		reporter = new TestReporter()
 
-		HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
-				.currentTraceContext(new RatpackCurrentTraceContext())
-				.reporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
-				.localServiceName("embedded")
-				.build());
-
-		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, httpTracing)
-
 		httpClient.request(_ as URI, _ as Action) >> { URI u, Action<? super RequestSpec> a ->
 			a.execute(requestSpec)
 			return Promise.value(this.receivedResponse)
 		}
 		requestSpec.get() >> requestSpec
+		requestSpec.getHeaders() >> new NettyHeadersBackedMutableHeaders(new DefaultHttpHeaders())
 	}
+
+	void harnessSetup(Execution e) {
+		HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
+				.currentTraceContext(new RatpackCurrentTraceContext(new Supplier<MutableRegistry>() {
+					@Override
+					MutableRegistry get() {
+						return e
+					}
+				}))
+				.reporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
+				.localServiceName("embedded")
+				.build())
+
+		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, httpTracing)
+	}
+
 	@Unroll
 	def "#method requests should be traced"(HttpMethod method) {
 		given:
@@ -60,6 +75,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			requestSpec.getUri() >> uri
 		when:
 			harness.yield { e ->
+				harnessSetup(e)
 				zipkinHttpClient.request(uri, {spec -> spec.method(method)})
 			}
 		then:
@@ -87,8 +103,9 @@ class ZipkinHttpClientImplSpec extends Specification {
 			requestSpec.getUri() >> uri
 		when:
 			harness.yield { e ->
+				harnessSetup(e)
 				zipkinHttpClient.get(uri, action)
-			}
+			}.value
 		then:
 			Span span = reporter.spans.get(0)
 		and: "should not contain http status code annotation"
@@ -113,6 +130,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 
 		when:
 			harness.yield { e ->
+				harnessSetup(e)
 				zipkinHttpClient.post(uri, action)
 			}
 		then:
@@ -142,6 +160,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			requestSpec.getUri() >> uri
 		when:
 			harness.yield { e ->
+				harnessSetup(e)
 				zipkinHttpClient.get(uri, action)
 			}
 		then:
@@ -174,6 +193,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}
 		when:
 			StreamedResponse response = harness.yield { e ->
+				harnessSetup(e)
 				zipkinHttpClient.requestStream(uri, action)
 			}.value
 		then:
