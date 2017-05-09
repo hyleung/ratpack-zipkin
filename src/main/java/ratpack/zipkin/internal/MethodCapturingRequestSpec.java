@@ -1,11 +1,14 @@
 package ratpack.zipkin.internal;
 
+import brave.Span;
+import brave.http.HttpClientHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLContext;
 import ratpack.func.Action;
 import ratpack.func.Function;
@@ -22,10 +25,14 @@ import ratpack.http.internal.NettyHeadersBackedMutableHeaders;
 class MethodCapturingRequestSpec implements RequestSpec {
 
   private final RequestSpec actualSpec;
-  private HttpMethod capturedMethod = null;
+  private final ZipkinHttpClientImpl impl;
+  private final AtomicReference<Span> span;
+  private HttpMethod capturedMethod;
 
-  public MethodCapturingRequestSpec(RequestSpec spec) {
+  MethodCapturingRequestSpec(ZipkinHttpClientImpl impl, RequestSpec spec,  AtomicReference<Span> span) {
     this.actualSpec = spec;
+    this.impl = impl;
+    this.span = span;
   }
 
   @Override
@@ -60,7 +67,8 @@ class MethodCapturingRequestSpec implements RequestSpec {
 
   @Override
   public RequestSpec method(HttpMethod method) {
-    capturedMethod = method;
+    this.capturedMethod = method;
+    span.set(impl.handler.handleSend(impl.injector, getHeaders(), this));
     return this;
   }
 

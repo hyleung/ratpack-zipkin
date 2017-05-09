@@ -16,14 +16,13 @@
 package ratpack.zipkin.internal;
 
 import brave.Span;
-import brave.Tracer;
 import brave.http.HttpClientHandler;
-import brave.http.HttpClientParser;
 import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import io.netty.buffer.ByteBufAllocator;
 import java.net.URI;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import ratpack.exec.Promise;
 import ratpack.exec.Result;
@@ -40,17 +39,12 @@ import ratpack.http.client.StreamedResponse;
 public class ZipkinHttpClientImpl implements HttpClient {
 
     private final HttpClient delegate;
-    private final Tracer tracer;
-    private final HttpClientParser parser;
-    private final HttpAdapter adapter = new HttpAdapter();
-    private final HttpClientHandler<MethodCapturingRequestSpec, Integer> handler;
-    private final TraceContext.Injector<MutableHeaders> injector;
+    final HttpClientHandler<MethodCapturingRequestSpec, Integer> handler;
+    final TraceContext.Injector<MutableHeaders> injector;
 
     @Inject
     public ZipkinHttpClientImpl(final HttpClient delegate, final HttpTracing httpTracing) {
         this.delegate = delegate;
-        this.tracer = httpTracing.tracing().tracer();
-        this.parser = httpTracing.clientParser();
         this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
         this.injector = httpTracing.tracing().propagation().injector(MutableHeaders::set);
     }
@@ -82,22 +76,18 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        final Span span = tracer.nextSpan().kind(Span.Kind.CLIENT);
-        try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-            return delegate
-                .request(uri, actionWithSpan(action, span))
-                .wiretap(response -> responseWithSpan(response, span));
-        } // span.finish() is called after the response is handled.
+        AtomicReference<Span> span = new AtomicReference<>();
+        return delegate
+            .request(uri, actionWithSpan(action, span))
+            .wiretap(response -> responseWithSpan(response, span));
     }
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
-        final Span span = tracer.nextSpan().kind(Span.Kind.CLIENT);
-        try(Tracer.SpanInScope ws = tracer.withSpanInScope(span)) {
-            return delegate
-                .requestStream(uri, actionWithSpan(requestConfigurer, span))
-                .wiretap(response -> streamedResponseWithSpan(response, span));
-        } // span.finish() is called after the response is handled.
+        AtomicReference<Span> span = new AtomicReference<>();
+        return delegate
+            .requestStream(uri, actionWithSpan(requestConfigurer, span))
+            .wiretap(response -> streamedResponseWithSpan(response, span));
     }
 
     @Override
@@ -110,23 +100,22 @@ public class ZipkinHttpClientImpl implements HttpClient {
         return request(uri, requestConfigurer.prepend(RequestSpec::post));
     }
 
-    private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final Span span) {
+    private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final AtomicReference<Span> span) {
         return action.append(request -> {
-            final MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(request);
-            injector.inject(span.context(), captor.getHeaders());
-            span.start();
+            MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(this, request, span);
             action.execute(captor);
-            // TODO cannot do handler.handleSend() as the span was created out-of-scope
-            span.name(parser.spanName(adapter, captor));
-            parser.requestTags(adapter, captor, span);
         });
     }
 
-    private void streamedResponseWithSpan(Result<StreamedResponse> response, Span span) {
+    private void streamedResponseWithSpan(Result<StreamedResponse> response, AtomicReference<Span> ref) {
+        Span span = ref.get();
+        if (span == null) return;
         handler.handleReceive(response.getValue().getStatusCode(), response.getThrowable(), span);
     }
 
-    private void responseWithSpan(Result<ReceivedResponse> response, Span span) {
+    private void responseWithSpan(Result<ReceivedResponse> response, AtomicReference<Span> ref) {
+        Span span = ref.get();
+        if (span == null) return;
         handler.handleReceive(response.getValue().getStatusCode(), response.getThrowable(), span);
     }
 
