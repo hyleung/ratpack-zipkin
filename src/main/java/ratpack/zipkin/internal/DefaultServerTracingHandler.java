@@ -16,7 +16,7 @@ import zipkin.Constants;
 import zipkin.TraceKeys;
 
 /**
- * {@link Handler} for ZipKin tracing.
+ * {@link Handler} for Zipkin tracing.
  */
 public final class DefaultServerTracingHandler implements ServerTracingHandler {
 

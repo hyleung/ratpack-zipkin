@@ -40,7 +40,7 @@ import zipkin.Span;
 import zipkin.reporter.Reporter;
 
 /**
- * Module for ZipKin distributed tracing.
+ * Module for Zipkin distributed tracing.
  */
 public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.Config> {
   @Override
