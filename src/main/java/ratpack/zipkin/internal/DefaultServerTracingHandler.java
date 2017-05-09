@@ -3,17 +3,15 @@ package ratpack.zipkin.internal;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracing;
+import brave.http.HttpServerHandler;
+import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
-import brave.propagation.TraceContextOrSamplingFlags;
 import javax.inject.Inject;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
-import ratpack.http.HttpMethod;
 import ratpack.http.Request;
+import ratpack.http.Response;
 import ratpack.zipkin.ServerTracingHandler;
-import ratpack.zipkin.SpanNameProvider;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 /**
  * {@link Handler} for ZipKin tracing.
@@ -21,43 +19,23 @@ import zipkin.TraceKeys;
 public final class DefaultServerTracingHandler implements ServerTracingHandler {
 
   private final Tracing tracing;
-  private final SpanNameProvider spanNameProvider;
+  private final HttpServerHandler<Request, Response> handler;
   private final TraceContext.Extractor<Request> extractor;
 
   @Inject
-  public DefaultServerTracingHandler(Tracing tracing, SpanNameProvider spanNameProvider) {
-    this.tracing = tracing;
-    this.spanNameProvider = spanNameProvider;
+  public DefaultServerTracingHandler(HttpTracing httpTracing) {
+    this.tracing = httpTracing.tracing();
+    this.handler = HttpServerHandler.create(httpTracing, new HttpAdapter());
     this.extractor = tracing.propagation().extractor((Request r, String name) -> r.getHeaders().get(name));
   }
 
   @Override
   public void handle(Context ctx) throws Exception {
-
-    TraceContextOrSamplingFlags contextOrSamplingFlags = extractor.extract(ctx.getRequest());
-
-    final Span span = (contextOrSamplingFlags.context() != null
-        ? tracing.tracer().joinSpan(contextOrSamplingFlags.context())
-        : tracing.tracer().newTrace(contextOrSamplingFlags.samplingFlags()))
-        .name(spanNameProvider.getName(new DefaultRequestSpanNameAdapter(ctx.getRequest())))
-        .kind(Span.Kind.SERVER);
-
     Request request = ctx.getRequest();
-    span.tag(TraceKeys.HTTP_URL, request.getUri());
+    final Span span = handler.handleReceive(extractor, request);
 
     ctx.getResponse().beforeSend(response -> {
-      if (response != null && response.getStatus() != null) {
-        int status = response.getStatus().getCode();
-        if (status < 200 || status > 299) {
-          span.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(status));
-        }
-        if (status > 399) {
-          span.tag(Constants.ERROR, "server error " + response.getStatus().getCode());
-        }
-      } else {
-        span.tag(Constants.ERROR, "missing or unknown status code");
-      }
-
+      handler.handleSend(response, null, span);
       span.finish();
     });
 
@@ -67,24 +45,26 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     }
   }
 
+  static final class HttpAdapter extends brave.http.HttpServerAdapter<Request, Response> {
 
-  private static final class DefaultRequestSpanNameAdapter implements
-      SpanNameProvider.SpanNameProviderAdapter {
-
-    private final Request request;
-
-    DefaultRequestSpanNameAdapter(Request request) {
-      this.request = request;
+    @Override public String method(Request request) {
+      return request.getMethod().getName();
     }
 
-    @Override
-    public String getUri() {
-      return this.request.getUri();
+    @Override public String path(Request request) {
+      return request.getPath();
     }
 
-    @Override
-    public HttpMethod getMethod() {
-      return this.request.getMethod();
+    @Override public String url(Request request) {
+      return request.getUri();
+    }
+
+    @Override public String requestHeader(Request request, String name) {
+      return request.getHeaders().get(name);
+    }
+
+    @Override public Integer statusCode(Response response) {
+      return response.getStatus().getCode();
     }
   }
 }

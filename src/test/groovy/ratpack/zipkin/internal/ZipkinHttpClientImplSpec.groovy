@@ -1,6 +1,7 @@
 package ratpack.zipkin.internal
 
 import brave.Tracing
+import brave.http.HttpTracing
 import brave.sampler.Sampler
 import io.netty.handler.codec.http.HttpResponseStatus
 import ratpack.exec.Promise
@@ -38,13 +39,13 @@ class ZipkinHttpClientImplSpec extends Specification {
 	def setup() {
 		reporter = new TestReporter()
 
-		Tracing tracing = Tracing.newBuilder()
+		HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
 				.currentTraceContext(new RatpackCurrentTraceContext())
 				.reporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
 				.localServiceName("embedded")
-				.build()
+				.build());
 
-		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, tracing, new DefaultSpanNameProvider())
+		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, httpTracing)
 
 		httpClient.request(_ as URI, _ as Action) >> { URI u, Action<? super RequestSpec> a ->
 			a.execute(requestSpec)
@@ -80,7 +81,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			HttpMethod.OPTIONS | _
 
 	}
-	def "Request returning 2xx include HTTP_URL annotation (but *not* status code)"(HttpResponseStatus status) {
+	def "Request returning 2xx include HTTP_PATH annotation (but *not* status code)"(HttpResponseStatus status) {
 		given:
 			receivedResponse.getStatusCode() >> status.code()
 			requestSpec.getUri() >> uri
@@ -92,8 +93,8 @@ class ZipkinHttpClientImplSpec extends Specification {
 			Span span = reporter.spans.get(0)
 		and: "should not contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isEmpty()
-		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
+		and: "should contain http path annotation"
+			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
 		where:
 			status | _
 			HttpResponseStatus.OK | _
@@ -105,7 +106,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			HttpResponseStatus.PARTIAL_CONTENT | _
 	}
 
-	def "Request returning 4xx include HTTP_URL and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
+	def "Request returning 4xx include HTTP_PATH and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
 		given:
 			receivedResponse.getStatusCode() >> status.code()
 			requestSpec.getUri() >> uri
@@ -119,7 +120,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		and: "should contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isNotEmpty()
 		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
+			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
 		where:
 			status | _
 			HttpResponseStatus.BAD_REQUEST | _
@@ -135,7 +136,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			HttpResponseStatus.GONE | _
 	}
 
-	def "Request returning 5xx include HTTP_URL and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
+	def "Request returning 5xx include HTTP_PATH and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
 		given:
 			receivedResponse.getStatusCode() >> status.code()
 			requestSpec.getUri() >> uri
@@ -148,7 +149,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		and: "should contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isNotEmpty()
 		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
+			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
 		and: "should contain error annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == Constants.ERROR}).isNotEmpty()
 		where:
@@ -181,6 +182,6 @@ class ZipkinHttpClientImplSpec extends Specification {
 		and: "should not contain http status code annotation"
 			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isEmpty()
 		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_URL}).isNotEmpty()
+			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
 	}
 }
