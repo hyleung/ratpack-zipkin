@@ -16,6 +16,10 @@
 package ratpack.zipkin;
 
 import brave.Tracing;
+import brave.http.HttpClientParser;
+import brave.http.HttpServerParser;
+import brave.http.HttpTracing;
+import brave.internal.Platform;
 import brave.sampler.Sampler;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
@@ -23,16 +27,12 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.OptionalBinder;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.http.client.HttpClient;
 import ratpack.server.ServerConfig;
 import ratpack.zipkin.internal.DefaultServerTracingHandler;
-import ratpack.zipkin.internal.DefaultSpanNameProvider;
 import ratpack.zipkin.internal.RatpackCurrentTraceContext;
 import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 import zipkin.Endpoint;
@@ -52,48 +52,37 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     bind(HttpClient.class).annotatedWith(Zipkin.class).to(ZipkinHttpClientImpl.class);
 
-    OptionalBinder.newOptionalBinder(binder(), SpanNameProvider.class)
-        .setDefault().to(DefaultSpanNameProvider.class).in(Scopes.SINGLETON);
+    OptionalBinder.newOptionalBinder(binder(), HttpClientParser.class)
+        .setDefault().to(HttpClientParser.class).in(Scopes.SINGLETON);
+    OptionalBinder.newOptionalBinder(binder(), HttpServerParser.class)
+        .setDefault().to(HttpServerParser.class).in(Scopes.SINGLETON);
 
     Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding()
         .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
   }
 
   @Provides
-  public Tracing getTracing(final Config config, final ServerConfig serverConfig) {
-    return Tracing.newBuilder()
+  public HttpTracing getTracing(final Config config, final ServerConfig serverConfig) {
+    Tracing tracing = Tracing.newBuilder()
         .sampler(config.sampler)
         .currentTraceContext(new RatpackCurrentTraceContext())
-        .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(), serverConfig.getAddress()))
+        .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(),
+            serverConfig.getAddress()))
         .localServiceName(config.serviceName)
         .reporter(config.spanReporter)
         .build();
+    return HttpTracing.newBuilder(tracing)
+        .clientParser(config.clientParser)
+        .serverParser(config.serverParser).build();
   }
 
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
-    Endpoint.Builder builder = Endpoint.builder()
-            .serviceName(serviceName)
-            .port(port);
-    InetAddress address = configAddress != null ? configAddress : getSiteLocalAddress();
-    if (address.getAddress().length == 4) {
-      builder.ipv4(ByteBuffer.wrap(address.getAddress()).getInt());
-    } else if (address.getAddress().length == 16) {
-      builder.ipv6(address.getAddress());
+    Endpoint.Builder builder = Endpoint.builder();
+    if (!builder.parseIp(configAddress)) {
+      builder = Platform.get().localEndpoint().toBuilder();
     }
-    return builder.build();
+    return builder.serviceName(serviceName).port(port).build();
   }
-
-  private static InetAddress getSiteLocalAddress() {
-    try {
-      return Collections.list(NetworkInterface.getNetworkInterfaces()).stream()
-              .flatMap(i -> Collections.list(i.getInetAddresses()).stream())
-              .filter(InetAddress::isSiteLocalAddress)
-              .findAny().orElse(InetAddress.getLoopbackAddress());
-    } catch (Exception e) {
-      return InetAddress.getLoopbackAddress();
-    }
-  }
-
 
   /**
    * Configuration class for {@link ServerTracingModule}.
@@ -102,6 +91,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private String serviceName = "unknown";
     private Reporter<Span> spanReporter = Reporter.NOOP;
     private Sampler sampler = Sampler.NEVER_SAMPLE;
+    private HttpClientParser clientParser = new HttpClientParser();
+    private HttpServerParser serverParser = new HttpServerParser();
 
     public Config serviceName(final String serviceName) {
       this.serviceName = serviceName;
@@ -118,5 +109,14 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
 
+    public Config clientParser(final HttpClientParser clientParser) {
+      this.clientParser = clientParser;
+      return this;
+    }
+
+    public Config serverParser(final HttpServerParser serverParser) {
+      this.serverParser = serverParser;
+      return this;
+    }
   }
 }
