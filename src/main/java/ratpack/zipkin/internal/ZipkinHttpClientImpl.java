@@ -16,26 +16,22 @@
 package ratpack.zipkin.internal;
 
 import brave.Span;
-import brave.Tracer;
-import brave.Tracing;
+import brave.http.HttpClientHandler;
+import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import io.netty.buffer.ByteBufAllocator;
 import java.net.URI;
 import java.time.Duration;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import ratpack.exec.Promise;
 import ratpack.exec.Result;
 import ratpack.func.Action;
-import ratpack.http.HttpMethod;
 import ratpack.http.MutableHeaders;
 import ratpack.http.client.HttpClient;
 import ratpack.http.client.ReceivedResponse;
 import ratpack.http.client.RequestSpec;
 import ratpack.http.client.StreamedResponse;
-import ratpack.zipkin.SpanNameProvider;
-import zipkin.Constants;
-import zipkin.TraceKeys;
 
 /**
  * Decorator that adds Zipkin client logging around {@link HttpClient}.
@@ -43,17 +39,14 @@ import zipkin.TraceKeys;
 public class ZipkinHttpClientImpl implements HttpClient {
 
     private final HttpClient delegate;
-    private final Tracing tracing;
-    private final SpanNameProvider spanNameProvider;
-    private final TraceContext.Injector<MutableHeaders> injector;
+    final HttpClientHandler<MethodCapturingRequestSpec, Integer> handler;
+    final TraceContext.Injector<MutableHeaders> injector;
 
     @Inject
-    public ZipkinHttpClientImpl(final HttpClient delegate, final Tracing tracing, final
-        SpanNameProvider spanNameProvider) {
+    public ZipkinHttpClientImpl(final HttpClient delegate, final HttpTracing httpTracing) {
         this.delegate = delegate;
-        this.tracing = tracing;
-        this.spanNameProvider = spanNameProvider;
-        this.injector = tracing.propagation().injector(MutableHeaders::set);
+        this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
+        this.injector = httpTracing.tracing().propagation().injector(MutableHeaders::set);
     }
 
     @Override
@@ -83,22 +76,18 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        final Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT);
-        try(Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
-            return delegate
-                .request(uri, actionWithSpan(action, span))
-                .wiretap(response -> responseWithSpan(response, span));
-        } // span.finish() is called after the response is handled.
+        AtomicReference<Span> span = new AtomicReference<>();
+        return delegate
+            .request(uri, actionWithSpan(action, span))
+            .wiretap(response -> responseWithSpan(response, span));
     }
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
-        final Span span = tracing.tracer().nextSpan().kind(Span.Kind.CLIENT);
-        try(Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
-            return delegate
-                .requestStream(uri, actionWithSpan(requestConfigurer, span))
-                .wiretap(response -> streamedResponseWithSpan(response, span));
-        } // span.finish() is called after the response is handled.
+        AtomicReference<Span> span = new AtomicReference<>();
+        return delegate
+            .requestStream(uri, actionWithSpan(requestConfigurer, span))
+            .wiretap(response -> streamedResponseWithSpan(response, span));
     }
 
     @Override
@@ -111,65 +100,46 @@ public class ZipkinHttpClientImpl implements HttpClient {
         return request(uri, requestConfigurer.prepend(RequestSpec::post));
     }
 
-    private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final Span span) {
+    private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final AtomicReference<Span> span) {
         return action.append(request -> {
-            final MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(request);
-            injector.inject(span.context(), captor.getHeaders());
-            span.start();
+            MethodCapturingRequestSpec captor = new MethodCapturingRequestSpec(this, request, span);
             action.execute(captor);
-            final DefaultRequestSpecNameAdapter adapter = new DefaultRequestSpecNameAdapter(captor);
-            span.name(spanNameProvider.getName(adapter));
-            span.tag(TraceKeys.HTTP_URL, adapter.getUri());
         });
     }
 
-    private void streamedResponseWithSpan(Result<StreamedResponse> response, Span span) {
-        resultWithSpan(response, () -> response.getValue().getStatusCode(), span);
+    private void streamedResponseWithSpan(Result<StreamedResponse> response, AtomicReference<Span> ref) {
+        Span span = ref.get();
+        if (span == null) return;
+        handler.handleReceive(response.getValue().getStatusCode(), response.getThrowable(), span);
     }
 
-    private void responseWithSpan(Result<ReceivedResponse> response, Span span) {
-        resultWithSpan(response, () -> response.getValue().getStatusCode(), span);
+    private void responseWithSpan(Result<ReceivedResponse> response, AtomicReference<Span> ref) {
+        Span span = ref.get();
+        if (span == null) return;
+        handler.handleReceive(response.getValue().getStatusCode(), response.getThrowable(), span);
     }
 
-    void resultWithSpan(Result<?> result, StatusCode statusCode, Span span) {
-        if (result.isError()) {
-            String message = result.getThrowable().getMessage();
-            if (message != null) {
-                span.tag(Constants.ERROR, result.getThrowable().getClass().getSimpleName());
-            }
-        } else {
-            int status = statusCode.getStatusCode();
-            if (status < 200 || status > 299) {
-                span.tag(TraceKeys.HTTP_STATUS_CODE, String.valueOf(status));
-            }
-            if (status > 399) {
-                span.tag(Constants.ERROR, "server error " + status);
-            }
-        }
-        span.finish();
-    }
+    static final class HttpAdapter
+        extends brave.http.HttpClientAdapter<MethodCapturingRequestSpec, Integer> {
 
-    private interface StatusCode {
-        int getStatusCode();
-    }
-
-    private static final class DefaultRequestSpecNameAdapter implements
-        SpanNameProvider.SpanNameProviderAdapter {
-        private final MethodCapturingRequestSpec request;
-
-        DefaultRequestSpecNameAdapter(MethodCapturingRequestSpec request) {
-            this.request = request;
+        @Override public String method(MethodCapturingRequestSpec request) {
+            return request.getCapturedMethod().getName();
         }
 
-        @Override
-        public String getUri() {
-            return this.request.getUri().toString();
+        @Override public String path(MethodCapturingRequestSpec request) {
+            return request.getUri().getPath();
         }
 
-        @Override
-        public HttpMethod getMethod() {
-            return Optional.ofNullable(request.getCapturedMethod()).orElse(HttpMethod.GET);
+        @Override public String url(MethodCapturingRequestSpec request) {
+            return request.getUri().toString();
+        }
+
+        @Override public String requestHeader(MethodCapturingRequestSpec request, String name) {
+            return request.getHeaders().get(name);
+        }
+
+        @Override public Integer statusCode(Integer response) {
+            return response;
         }
     }
-
 }
