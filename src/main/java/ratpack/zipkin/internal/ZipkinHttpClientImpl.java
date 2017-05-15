@@ -16,14 +16,13 @@
 package ratpack.zipkin.internal;
 
 import brave.Span;
-import brave.Tracer;
 import brave.http.HttpClientHandler;
 import brave.http.HttpTracing;
-import brave.propagation.CurrentTraceContext;
 import brave.propagation.TraceContext;
 import io.netty.buffer.ByteBufAllocator;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import javax.net.ssl.SSLContext;
@@ -41,21 +40,17 @@ import ratpack.http.client.StreamedResponse;
 /**
  * Decorator that adds Zipkin client logging around {@link HttpClient}.
  */
-public class ZipkinHttpClientImpl implements HttpClient {
+public final class ZipkinHttpClientImpl implements HttpClient {
 
     private final HttpClient delegate;
     final HttpClientHandler<WrappedRequestSpec, Integer> handler;
     final TraceContext.Injector<MutableHeaders> injector;
-    final Tracer tracer;
-    final CurrentTraceContext context;
 
     @Inject
     public ZipkinHttpClientImpl(final HttpClient delegate, final HttpTracing httpTracing) {
         this.delegate = delegate;
         this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
         this.injector = httpTracing.tracing().propagation().injector(MutableHeaders::set);
-        this.tracer = httpTracing.tracing().tracer();
-        this.context = httpTracing.tracing().currentTraceContext();
     }
 
     @Override
@@ -86,18 +81,25 @@ public class ZipkinHttpClientImpl implements HttpClient {
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
         AtomicReference<Span> span = new AtomicReference<>();
-        TraceContext current = context.get();
         return delegate
-            .request(uri, actionWithSpan(action, span, current))
+            .request(uri, action.append(requestSpec -> {
+                WrappedRequestSpec captor = new WrappedRequestSpec(this, requestSpec, span);
+                action.execute(captor);
+            }))
             .wiretap(response -> responseWithSpan(response, span));
     }
 
     @Override
-    public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> requestConfigurer) {
+    public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> action) {
         AtomicReference<Span> span = new AtomicReference<>();
-        TraceContext current = context.get();
         return delegate
-            .requestStream(uri, actionWithSpan(requestConfigurer, span, current))
+            .requestStream(uri, action.append(requestSpec -> {
+                WrappedRequestSpec captor = new WrappedRequestSpec(this, requestSpec, span);
+                // streamed request doesn't set the http method.
+                // start span here until a better solution presents itself.
+                span.set(this.handler.handleSend(this.injector, captor.getHeaders(), captor));
+                action.execute(captor);
+            }))
             .wiretap(response -> streamedResponseWithSpan(response, span));
     }
 
@@ -109,13 +111,6 @@ public class ZipkinHttpClientImpl implements HttpClient {
     @Override
     public Promise<ReceivedResponse> post(final URI uri, final Action<? super RequestSpec> requestConfigurer) {
         return request(uri, requestConfigurer.prepend(RequestSpec::post));
-    }
-
-    private Action<? super RequestSpec> actionWithSpan(final Action<? super RequestSpec> action, final AtomicReference<Span> span, final TraceContext current) {
-        return action.append(request -> {
-            WrappedRequestSpec captor = new WrappedRequestSpec(this, request, span);
-            action.execute(captor);
-        });
     }
 
     private void streamedResponseWithSpan(Result<StreamedResponse> response, AtomicReference<Span> ref) {
@@ -142,7 +137,8 @@ public class ZipkinHttpClientImpl implements HttpClient {
         extends brave.http.HttpClientAdapter<WrappedRequestSpec, Integer> {
 
         @Override public String method(WrappedRequestSpec request) {
-            return request.getCapturedMethod().getName();
+            HttpMethod method = Optional.ofNullable(request.getCapturedMethod()).orElse(HttpMethod.GET);
+            return method.getName();
         }
 
         @Override public String path(WrappedRequestSpec request) {
@@ -163,8 +159,8 @@ public class ZipkinHttpClientImpl implements HttpClient {
     }
 
     /**
-     * "Dummy" implementation of RequestSpec, used to capture the HTTP request method.
-     *
+     * RequestSpec wrapper that captures the method type, sets up redirect handling
+     * and starts new spans when a method type is set.
      */
     static final class WrappedRequestSpec implements RequestSpec {
 
@@ -177,6 +173,19 @@ public class ZipkinHttpClientImpl implements HttpClient {
             this.delegate = spec;
             this.client = client;
             this.span = span;
+            this.delegate.onRedirect(this::redirectHandler);
+        }
+
+        /**
+         * Default redirect handler that ensures the span is marked as received before
+         * a new span is created.
+         *
+         * @param response
+         * @return
+         */
+        private Action<? super RequestSpec> redirectHandler(ReceivedResponse response) {
+            client.handler.handleReceive(response.getStatusCode(), null, span.get());
+            return (s) -> new WrappedRequestSpec(client, s, span);
         }
 
         @Override
@@ -187,7 +196,11 @@ public class ZipkinHttpClientImpl implements HttpClient {
 
         @Override
         public RequestSpec onRedirect(Function<? super ReceivedResponse, Action<? super RequestSpec>> function) {
-            this.delegate.onRedirect(function);
+
+            Function<? super ReceivedResponse, Action<? super RequestSpec>> wrapped =
+                (ReceivedResponse response) -> redirectHandler(response).append(function.apply(response));
+
+            this.delegate.onRedirect(wrapped);
             return this;
         }
 
@@ -217,7 +230,7 @@ public class ZipkinHttpClientImpl implements HttpClient {
         @Override
         public RequestSpec method(HttpMethod method) {
             this.capturedMethod = method;
-            span.set(client.handler.handleSend(client.injector, getHeaders(), this));
+            span.set(client.handler.handleSend(client.injector, this.getHeaders(), this));
             this.delegate.method(method);
             return this;
         }

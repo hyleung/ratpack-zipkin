@@ -14,7 +14,6 @@ import ratpack.http.client.ReceivedResponse
 import ratpack.http.client.RequestSpec
 import ratpack.http.client.StreamedResponse
 import ratpack.http.internal.NettyHeadersBackedMutableHeaders
-import ratpack.registry.MutableRegistry
 import ratpack.test.exec.ExecHarness
 import ratpack.zipkin.support.TestReporter
 import spock.lang.AutoCleanup
@@ -23,8 +22,6 @@ import spock.lang.Unroll
 import zipkin.Constants
 import zipkin.Span
 import zipkin.TraceKeys
-
-import java.util.function.Supplier
 
 import static org.assertj.core.api.Assertions.assertThat
 
@@ -55,12 +52,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 
 	void harnessSetup(Execution e) {
 		HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
-				.currentTraceContext(new RatpackCurrentTraceContext(new Supplier<MutableRegistry>() {
-					@Override
-					MutableRegistry get() {
-						return e
-					}
-				}))
+				.currentTraceContext(new RatpackCurrentTraceContext({ -> e}))
 				.reporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
 				.localServiceName("embedded")
 				.build())
@@ -194,7 +186,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		when:
 			StreamedResponse response = harness.yield { e ->
 				harnessSetup(e)
-				zipkinHttpClient.requestStream(uri, action)
+				zipkinHttpClient.requestStream(uri, action.append({ RequestSpec s -> s.get()}))
 			}.value
 		then:
 			response.getStatusCode() == 200
