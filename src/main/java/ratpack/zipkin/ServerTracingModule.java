@@ -17,6 +17,7 @@ package ratpack.zipkin;
 
 import brave.Tracing;
 import brave.http.HttpClientParser;
+import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.internal.Platform;
@@ -46,19 +47,14 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   @Override
   protected void configure() {
     bind(ServerTracingHandler.class).to(DefaultServerTracingHandler.class);
-    Provider<ServerTracingHandler> serverTracingHandlerProviderProvider =
+    Provider<ServerTracingHandler> serverTracingHandlerProvider =
         getProvider(ServerTracingHandler.class);
 
 
     bind(HttpClient.class).annotatedWith(Zipkin.class).to(ZipkinHttpClientImpl.class);
 
-    OptionalBinder.newOptionalBinder(binder(), HttpClientParser.class)
-        .setDefault().to(HttpClientParser.class).in(Scopes.SINGLETON);
-    OptionalBinder.newOptionalBinder(binder(), HttpServerParser.class)
-        .setDefault().to(HttpServerParser.class).in(Scopes.SINGLETON);
-
     Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding()
-        .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProviderProvider.get()));
+        .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProvider.get()));
   }
 
   @Provides
@@ -73,7 +69,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
         .build();
     return HttpTracing.newBuilder(tracing)
         .clientParser(config.clientParser)
-        .serverParser(config.serverParser).build();
+        .serverParser(config.serverParser)
+        .serverSampler(config.serverSampler)
+        .clientSampler(config.clientSampler)
+        .build();
   }
 
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
@@ -91,6 +90,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private String serviceName = "unknown";
     private Reporter<Span> spanReporter = Reporter.NOOP;
     private Sampler sampler = Sampler.NEVER_SAMPLE;
+    private HttpSampler serverSampler = HttpSampler.TRACE_ID;
+    private HttpSampler clientSampler = HttpSampler.TRACE_ID;
     private HttpClientParser clientParser = new HttpClientParser();
     private HttpServerParser serverParser = new HttpServerParser();
 
@@ -106,6 +107,16 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     public Config sampler(final Sampler sampler) {
       this.sampler = sampler;
+      return this;
+    }
+
+    public Config clientSampler(final HttpSampler clientSampler) {
+      this.clientSampler = clientSampler;
+      return this;
+    }
+
+    public Config serverSampler(final HttpSampler httpSampler) {
+      this.serverSampler = httpSampler;
       return this;
     }
 
