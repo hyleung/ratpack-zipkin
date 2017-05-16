@@ -1,5 +1,6 @@
 package ratpack.zipkin
 
+import brave.http.HttpSampler
 import ratpack.zipkin.support.B3PropagationHeaders
 import spock.lang.Unroll
 
@@ -49,6 +50,8 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
+								.clientSampler(HttpSampler.TRACE_ID)
+								.serverSampler(HttpSampler.TRACE_ID)
 								.spanReporter(Reporter.NOOP)
 					})
 				}).handlers {
