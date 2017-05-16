@@ -37,7 +37,8 @@ repositories {
 dependencies {
     compile 'io.ratpack:ratpack-guice:1.4.5'
     compile 'org.slf4j:slf4j-api:1.7.13'
-    compile 'io.zipkin.brave:brave:4.3.0'
+    compile "io.zipkin.brave:brave:${braveVersion}"
+    compile "io.zipkin.brave:brave-instrumentation-http:${braveVersion}"
     testCompile 'junit:junit:4.12'
     testCompile 'org.assertj:assertj-core:3.4.1'
     testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
@@ -47,7 +48,7 @@ dependencies {
     testCompile 'com.nagternal:spock-genesis:0.4.0'
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
     testCompile 'io.ratpack:ratpack-groovy-test:1.4.1'
-    testCompile 'io.zipkin.brave:brave-instrumentation-http-tests:4.3.0'
+    testCompile "io.zipkin.brave:brave-instrumentation-http-tests:${braveVersion}"
 }
 
 //Artifacts
