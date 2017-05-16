@@ -83,7 +83,7 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         AtomicReference<Span> span = new AtomicReference<>();
         return delegate
             .request(uri, action.append(requestSpec -> {
-                WrappedRequestSpec captor = new WrappedRequestSpec(this, requestSpec, span);
+                WrappedRequestSpec captor = new WrappedRequestSpec(this.handler, this.injector, requestSpec, span);
                 action.execute(captor);
             }))
             .wiretap(response -> responseWithSpan(response, span));
@@ -94,7 +94,7 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         AtomicReference<Span> span = new AtomicReference<>();
         return delegate
             .requestStream(uri, action.append(requestSpec -> {
-                WrappedRequestSpec captor = new WrappedRequestSpec(this, requestSpec, span);
+                WrappedRequestSpec captor = new WrappedRequestSpec(this.handler, this.injector, requestSpec, span);
                 // streamed request doesn't set the http method.
                 // start span here until a better solution presents itself.
                 span.set(this.handler.handleSend(this.injector, captor.getHeaders(), captor));
@@ -165,14 +165,17 @@ public final class ZipkinHttpClientImpl implements HttpClient {
     static final class WrappedRequestSpec implements RequestSpec {
 
         private final RequestSpec delegate;
-        private final ZipkinHttpClientImpl client;
         private final AtomicReference<Span> span;
+        private final HttpClientHandler<WrappedRequestSpec, Integer> handler;
+        private final TraceContext.Injector<MutableHeaders> injector;
         private HttpMethod capturedMethod;
 
-        WrappedRequestSpec(ZipkinHttpClientImpl client, RequestSpec spec,  AtomicReference<Span> span) {
+        WrappedRequestSpec(HttpClientHandler<WrappedRequestSpec, Integer> handler,
+            TraceContext.Injector<MutableHeaders> injector, RequestSpec spec,  AtomicReference<Span> span) {
             this.delegate = spec;
-            this.client = client;
             this.span = span;
+            this.handler = handler;
+            this.injector = injector;
             this.delegate.onRedirect(this::redirectHandler);
         }
 
@@ -184,8 +187,8 @@ public final class ZipkinHttpClientImpl implements HttpClient {
          * @return
          */
         private Action<? super RequestSpec> redirectHandler(ReceivedResponse response) {
-            client.handler.handleReceive(response.getStatusCode(), null, span.get());
-            return (s) -> new WrappedRequestSpec(client, s, span);
+            handler.handleReceive(response.getStatusCode(), null, span.get());
+            return (s) -> new WrappedRequestSpec(handler, injector, s, span);
         }
 
         @Override
@@ -230,7 +233,7 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         @Override
         public RequestSpec method(HttpMethod method) {
             this.capturedMethod = method;
-            span.set(client.handler.handleSend(client.injector, this.getHeaders(), this));
+            span.set(handler.handleSend(injector, this.getHeaders(), this));
             this.delegate.method(method);
             return this;
         }
