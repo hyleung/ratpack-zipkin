@@ -3,10 +3,11 @@ package ratpack.zipkin.support
 import zipkin.Span
 import zipkin.reporter.Reporter
 
+import java.util.concurrent.ConcurrentLinkedDeque
 
 class TestReporter implements Reporter<Span> {
 
-	private final List<Span> spans = new LinkedList<>()
+	private final ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>()
 
 	@Override
 	void report(Span span) {
@@ -14,7 +15,7 @@ class TestReporter implements Reporter<Span> {
 	}
 
 	List<Span> getSpans() {
-		return spans
+		return spans.asImmutable().toList()
 	}
 
 	void reset() {
