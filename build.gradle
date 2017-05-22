@@ -48,6 +48,7 @@ dependencies {
     testCompile 'org.slf4j:slf4j-nop:1.7.21'
     testCompile 'io.ratpack:ratpack-groovy-test:1.4.1'
     testCompile "io.zipkin.brave:brave-instrumentation-http-tests:${braveVersion}"
+    testCompile 'com.squareup.okhttp3:mockwebserver:3.8.0'
 }
 
 //Artifacts

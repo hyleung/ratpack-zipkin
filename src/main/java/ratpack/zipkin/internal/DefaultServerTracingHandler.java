@@ -33,16 +33,14 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
   public void handle(Context ctx) throws Exception {
     Request request = ctx.getRequest();
     final Span span = handler.handleReceive(extractor, request);
-
+    final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
     ctx.getResponse().beforeSend(response -> {
       handler.handleSend(response, null, span);
       span.finish();
+      scope.close();
     });
-
-    try(Tracer.SpanInScope ws = tracing.tracer().withSpanInScope(span)) {
-      span.start();
-      ctx.next();
-    }
+    span.start();
+    ctx.next();
   }
 
   static final class HttpAdapter extends brave.http.HttpServerAdapter<Request, Response> {
