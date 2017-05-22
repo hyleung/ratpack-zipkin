@@ -52,6 +52,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
 
     bind(HttpClient.class).annotatedWith(Zipkin.class).to(ZipkinHttpClientImpl.class);
+    bind(ZipkinHttpClientImpl.class);
 
     Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding()
         .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProvider.get()));

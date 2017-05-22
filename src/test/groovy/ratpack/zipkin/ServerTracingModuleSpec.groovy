@@ -1,6 +1,9 @@
 package ratpack.zipkin
 
 import brave.http.HttpSampler
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import ratpack.zipkin.internal.ZipkinHttpClientImpl
 import ratpack.zipkin.support.B3PropagationHeaders
 import spock.lang.Unroll
 
@@ -367,5 +370,50 @@ class ServerTracingModuleSpec extends Specification {
 			}
 		then:
 			assertThat(reporter.getSpans()).isNotEmpty()
+	}
+
+	def 'Should nest client span and server span should have the same trace id'() {
+		given:
+			def webServer = new MockWebServer()
+			webServer.start()
+			webServer.enqueue(new MockResponse().setResponseCode(200))
+			def url = webServer.url("/")
+		and: 'a handler that uses http client to call another service'
+			def app = GroovyEmbeddedApp.of { server ->
+				server.registry(Guice.registry { binding ->
+					binding.module(ServerTracingModule.class, { config ->
+						config
+								.serviceName("embedded")
+								.sampler(Sampler.ALWAYS_SAMPLE)
+								.spanReporter(reporter)
+					})
+				}).handlers {
+					chain ->
+						chain.all {
+							ctx ->
+								def client = ctx.get(ZipkinHttpClientImpl.class)
+								client.get(url.url().toURI())
+									.then{ resp -> ctx.render("Got response from client: " + resp.getStatusCode()) }
+						}
+				}
+			}
+
+		when: 'the handler is invoked'
+			app.test { t ->
+				t.request { spec ->
+					spec.get()
+				}
+			}
+			def spans = reporter.getSpans()
+		then: 'the correct number of spans is reported (one server span, one client span)'
+			assertThat(spans).isNotEmpty()
+			assertThat(spans).hasSize(2)
+		and: 'both server span and client span have the same trace id'
+			def serverSpan = spans.find{ s -> s.annotations.find {it -> it.value == Constants.SERVER_RECV}}
+			def clientSpan = spans.find{ s -> s.annotations.find {it -> it.value == Constants.CLIENT_RECV}}
+			clientSpan.traceId == serverSpan.traceId
+		cleanup:
+			webServer.shutdown()
+
 	}
 }
