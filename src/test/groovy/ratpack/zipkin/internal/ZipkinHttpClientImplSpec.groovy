@@ -3,17 +3,17 @@ package ratpack.zipkin.internal
 import brave.Tracing
 import brave.http.HttpTracing
 import brave.sampler.Sampler
-import io.netty.handler.codec.http.DefaultHttpHeaders
+import io.netty.buffer.UnpooledByteBufAllocator
 import io.netty.handler.codec.http.HttpResponseStatus
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import ratpack.exec.Execution
-import ratpack.exec.Promise
 import ratpack.func.Action
 import ratpack.http.HttpMethod
 import ratpack.http.client.HttpClient
-import ratpack.http.client.ReceivedResponse
 import ratpack.http.client.RequestSpec
 import ratpack.http.client.StreamedResponse
-import ratpack.http.internal.NettyHeadersBackedMutableHeaders
+import ratpack.server.ServerConfig
 import ratpack.test.exec.ExecHarness
 import ratpack.zipkin.support.TestReporter
 import spock.lang.AutoCleanup
@@ -26,28 +26,26 @@ import zipkin.TraceKeys
 import static org.assertj.core.api.Assertions.assertThat
 
 class ZipkinHttpClientImplSpec extends Specification {
-	
+
+	MockWebServer webServer
+	URI uri
 	@AutoCleanup
 	ExecHarness harness = ExecHarness.harness()
 
-	HttpClient httpClient = Mock(HttpClient)
-	RequestSpec requestSpec = Mock(RequestSpec)
-	ReceivedResponse receivedResponse = Mock(ReceivedResponse)
 	ZipkinHttpClientImpl zipkinHttpClient
 	TestReporter reporter
 
-	URI uri = URI.create("http://localhost/test")
 	Action<? super RequestSpec> action = Action.noop()
 
 	def setup() {
+		webServer = new MockWebServer()
+		webServer.start()
+		uri = webServer.url("/").url().toURI()
 		reporter = new TestReporter()
+	}
 
-		httpClient.request(_ as URI, _ as Action) >> { URI u, Action<? super RequestSpec> a ->
-			a.execute(requestSpec)
-			return Promise.value(this.receivedResponse)
-		}
-		requestSpec.get() >> requestSpec
-		requestSpec.getHeaders() >> new NettyHeadersBackedMutableHeaders(new DefaultHttpHeaders())
+	def cleanup() {
+		webServer.shutdown()
 	}
 
 	void harnessSetup(Execution e) {
@@ -57,14 +55,16 @@ class ZipkinHttpClientImplSpec extends Specification {
 				.localServiceName("embedded")
 				.build())
 
-		zipkinHttpClient = new ZipkinHttpClientImpl(httpClient, httpTracing)
+		zipkinHttpClient = new ZipkinHttpClientImpl(HttpClient.of { s ->
+			s.poolSize(0)
+			 .byteBufAllocator(UnpooledByteBufAllocator.DEFAULT)
+			  .maxContentLength(ServerConfig.DEFAULT_MAX_CONTENT_LENGTH)}, httpTracing)
 	}
 
 	@Unroll
 	def "#method requests should be traced"(HttpMethod method) {
 		given:
-			receivedResponse.getStatusCode() >> 200
-			requestSpec.getUri() >> uri
+			webServer.enqueue(new MockResponse().setResponseCode(200))
 		when:
 			harness.yield { e ->
 				harnessSetup(e)
@@ -91,8 +91,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 	}
 	def "Request returning 2xx include HTTP_PATH annotation (but *not* status code)"(HttpResponseStatus status) {
 		given:
-			receivedResponse.getStatusCode() >> status.code()
-			requestSpec.getUri() >> uri
+			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
 		when:
 			harness.yield { e ->
 				harnessSetup(e)
@@ -117,9 +116,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 
 	def "Request returning 4xx include HTTP_PATH and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
 		given:
-			receivedResponse.getStatusCode() >> status.code()
-			requestSpec.getUri() >> uri
-
+			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
 		when:
 			harness.yield { e ->
 				harnessSetup(e)
@@ -148,8 +145,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 
 	def "Request returning 5xx include HTTP_PATH and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
 		given:
-			receivedResponse.getStatusCode() >> status.code()
-			requestSpec.getUri() >> uri
+			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
 		when:
 			harness.yield { e ->
 				harnessSetup(e)
@@ -176,13 +172,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 
 	def "Should trace streamed requests" () {
 		given:
-			StreamedResponse streamedResponse = Stub(StreamedResponse)
-			streamedResponse.getStatusCode() >> 200
-			requestSpec.getUri() >> uri
-			httpClient.requestStream(_ as URI, _ as Action) >> { URI u, Action<? super RequestSpec> a ->
-				a.execute(requestSpec)
-				return Promise.value(streamedResponse)
-			}
+			webServer.enqueue(new MockResponse().setResponseCode(200))
 		when:
 			StreamedResponse response = harness.yield { e ->
 				harnessSetup(e)
