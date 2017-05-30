@@ -14,6 +14,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 
 //Only target Java 8
+// Testing
 if (!JavaVersion.current().java8Compatible) {
     throw new IllegalStateException("Must be built with Java 8 or higher")
 }
