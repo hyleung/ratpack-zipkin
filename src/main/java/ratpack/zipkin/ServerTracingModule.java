@@ -24,10 +24,7 @@ import brave.internal.Platform;
 import brave.sampler.Sampler;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
-import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
-import com.google.inject.multibindings.OptionalBinder;
-import java.net.InetAddress;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
@@ -39,6 +36,8 @@ import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 import zipkin.Endpoint;
 import zipkin.Span;
 import zipkin.reporter.Reporter;
+
+import java.net.InetAddress;
 
 /**
  * Module for Zipkin distributed tracing.
@@ -96,36 +95,100 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private HttpClientParser clientParser = new HttpClientParser();
     private HttpServerParser serverParser = new HttpServerParser();
 
+    /**
+     * Set the service name.
+     *
+     * @param serviceName the service name.
+     * @return the config
+     */
     public Config serviceName(final String serviceName) {
       this.serviceName = serviceName;
       return this;
     }
 
+    /**
+     * Set the Span reporter.
+     *
+     * If not set, defaults to {@link Reporter#NOOP}.
+     *
+     * @param reporter the reporter
+     *
+     * @return the config
+     */
     public Config spanReporter(final Reporter<Span> reporter) {
       this.spanReporter = reporter;
       return this;
     }
 
+    /**
+     * Set the sampler.
+     *
+     * If not set, defaults to {@link Sampler#NEVER_SAMPLE}.
+     *
+     * @param sampler the sampler
+     *
+     * @return the config
+     */
     public Config sampler(final Sampler sampler) {
       this.sampler = sampler;
       return this;
     }
 
+    /**
+     * Set the {@link HttpSampler} for client requests.
+     *
+     * If not set, defaults to {@link HttpSampler#TRACE_ID}.
+     *
+     * @param clientSampler the client sampler
+     *
+     * @return the config
+     */
     public Config clientSampler(final HttpSampler clientSampler) {
       this.clientSampler = clientSampler;
       return this;
     }
 
+    /**
+     * Set the {@link HttpSampler} for server requests.
+     *
+     * If not set, defaults to {@link HttpSampler#TRACE_ID}.
+     *
+     * @param httpSampler the server sampler
+     *
+     * @return the config
+     */
     public Config serverSampler(final HttpSampler httpSampler) {
       this.serverSampler = httpSampler;
       return this;
     }
 
+    /**
+     * Set the {@link HttpClientParser}.
+     *
+     * Defaults to {@link HttpClientParser}, which implements some reasonable
+     * defaults for client spans.
+     * Provide a subclass of {@link HttpClientParser} to customize behaviour.
+     *
+     * @param clientParser the client parser
+     *
+     * @return the config
+     */
     public Config clientParser(final HttpClientParser clientParser) {
       this.clientParser = clientParser;
       return this;
     }
 
+    /**
+     * Set the {@link HttpServerParser}.
+     *
+     * Defaults to {@link HttpServerParser}, which implements some reasonable
+     * defaults for server spans.
+     * Provide a subclass of {@link HttpServerParser} to customize behaviour.
+     *
+     * @param serverParser the client parser
+     *
+     * @return the config
+     */
     public Config serverParser(final HttpServerParser serverParser) {
       this.serverParser = serverParser;
       return this;
