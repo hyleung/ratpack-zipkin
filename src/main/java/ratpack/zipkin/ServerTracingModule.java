@@ -86,19 +86,24 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   @Provides @Singleton
   public HttpTracing getHttpTracing(final Config config, final ServerConfig serverConfig) {
     Tracing tracing = Tracing.newBuilder()
-        .sampler(config.sampler)
-        .currentTraceContext(new RatpackCurrentTraceContext())
-        .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(),
-            serverConfig.getAddress()))
-        .localServiceName(config.serviceName)
-        .reporter(config.spanReporter)
-        .build();
+                             .sampler(config.sampler)
+                             .currentTraceContext(new RatpackCurrentTraceContext())
+                             .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(),
+                                 serverConfig.getAddress()))
+                             .localServiceName(config.serviceName)
+                             .reporter(config.spanReporter)
+                             .build();
     return HttpTracing.newBuilder(tracing)
-        .clientParser(config.clientParser)
-        .serverParser(config.serverParser)
-        .serverSampler(config.serverSampler)
-        .clientSampler(config.clientSampler)
-        .build();
+                      .clientParser(config.clientParser)
+                      .serverParser(config.serverParser)
+                      .serverSampler(config.serverSampler)
+                      .clientSampler(config.clientSampler)
+                      .build();
+  }
+
+  @Provides
+  public SpanNameProvider spanNameProvider(final Config config) {
+    return config.spanNameProvider;
   }
 
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
@@ -118,8 +123,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private Sampler sampler = Sampler.NEVER_SAMPLE;
     private HttpSampler serverSampler = HttpSampler.TRACE_ID;
     private HttpSampler clientSampler = HttpSampler.TRACE_ID;
+
     private HttpClientParser clientParser = new HttpClientParser();
     private HttpServerParser serverParser = new HttpServerParser();
+    private SpanNameProvider spanNameProvider = (req,res) -> req.getMethod().getName();
 
     /**
      * Set the service name.
@@ -219,5 +226,17 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       this.serverParser = serverParser;
       return this;
     }
+
+    /**
+     * Set a function for customizing the Span name.
+     *
+     * @param spanNameProvider a function taking a request and response
+     * @return the Span name
+     */
+    public Config spanNameProvider(final SpanNameProvider spanNameProvider) {
+      this.spanNameProvider = spanNameProvider;
+      return this;
+    }
   }
+
 }
