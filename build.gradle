@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    compile 'io.ratpack:ratpack-guice:1.4.5'
+    compile "io.ratpack:ratpack-guice:${ratpackVersion}"
     compile 'org.slf4j:slf4j-api:1.7.13'
     compile "io.zipkin.brave:brave:${braveVersion}"
     compile "io.zipkin.brave:brave-instrumentation-http:${braveVersion}"
