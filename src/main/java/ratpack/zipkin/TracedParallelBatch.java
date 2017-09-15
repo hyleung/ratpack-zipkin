@@ -60,8 +60,7 @@ public final class TracedParallelBatch<T> {
    */
   public static <T> ParallelBatch<T> of(final TraceContext context, Iterable<? extends Promise<T>> promises) {
     return ParallelBatch.of(promises)
-        .execInit(execution ->
-            execution.add(new RatpackCurrentTraceContext.TraceContextHolder(context)));
+        .execInit(execution -> execution.add(RatpackCurrentTraceContext.wrap(context)));
   }
 
   /**

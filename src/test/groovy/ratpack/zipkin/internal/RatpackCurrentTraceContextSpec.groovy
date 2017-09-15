@@ -61,4 +61,19 @@ class RatpackCurrentTraceContextSpec extends Specification {
             traceContext == null
     }
 
+    def 'When TraceContext is null the context should be cleared'() {
+        given:
+            def expected = Stub(TraceContext)
+        and:
+            traceContext.newScope(expected)
+        when:
+            def result = traceContext.get()
+        then:
+            result == expected
+        when:
+            traceContext.newScope(null)
+        then:
+            traceContext.get() == null
+    }
+
 }
