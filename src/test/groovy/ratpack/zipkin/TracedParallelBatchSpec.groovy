@@ -23,7 +23,7 @@ class TracedParallelBatchSpec extends Specification {
 	Tracing tracing
 
 	Tracing.Builder tracingBuilder(Execution execution) {
-		return Tracing.newBuilder().reporter(reporter)
+		return Tracing.newBuilder().spanReporter(reporter)
 		.currentTraceContext(new RatpackCurrentTraceContext({ -> execution }))
 		.sampler(Sampler.ALWAYS_SAMPLE)
 	}
@@ -87,19 +87,16 @@ class TracedParallelBatchSpec extends Specification {
 		results.find {it.value == "promise2"}
 
 		and: 'spans contain expected values'
-		List<zipkin.Span> spans = reporter.spans
+		List<zipkin2.Span> spans = reporter.spans
 		spans.size() == 3
-		zipkin.Span parent = spans.find {it.name == "parent"}
-		zipkin.Span promise1 = spans.find {it.name == "promise1"}
-		zipkin.Span promise2 = spans.find {it.name == "promise2"}
+		zipkin2.Span parent = spans.find {it.name() == "parent"}
+		zipkin2.Span promise1 = spans.find {it.name() == "promise1"}
+		zipkin2.Span promise2 = spans.find {it.name() == "promise2"}
 
-		promise1.parentId == parent.id
-		promise1.traceId == parent.traceId
-		promise2.parentId == parent.id
-		promise2.traceId == parent.traceId
-
-
-
+		promise1.parentId() == parent.id()
+		promise1.traceId() == parent.traceId()
+		promise2.parentId() == parent.id()
+		promise2.traceId() == parent.traceId()
 
 	}
 

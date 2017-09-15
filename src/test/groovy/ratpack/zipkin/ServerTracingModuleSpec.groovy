@@ -20,10 +20,8 @@ import ratpack.guice.Guice
 import ratpack.http.HttpMethod
 import ratpack.zipkin.support.TestReporter
 import spock.lang.Specification
-import zipkin.Constants
-import zipkin.Span
+import zipkin2.Span
 import zipkin.TraceKeys
-import zipkin.reporter.Reporter
 
 class ServerTracingModuleSpec extends Specification {
 
@@ -59,7 +57,7 @@ class ServerTracingModuleSpec extends Specification {
 								.sampler(Sampler.create(1f))
 								.clientSampler(HttpSampler.TRACE_ID)
 								.serverSampler(HttpSampler.TRACE_ID)
-								.spanReporter(Reporter.NOOP)
+								.spanReporter({Span s -> })
 					})
 				}).handlers {
 					chain ->
@@ -95,10 +93,8 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-		and: "should contain SS annotation"
-			span.annotations.findAll { it.value == Constants.SERVER_SEND }.size() == 1
-		and: "should contain SR annotation"
-			span.annotations.findAll { it.value == Constants.SERVER_RECV }.size() == 1
+		and: "should be server span"
+			span.kind() == Span.Kind.SERVER
 	}
 
 	@Unroll
@@ -128,7 +124,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.name == method.name.toLowerCase()
+			span.name() == method.name.toLowerCase()
 		where:
 			method             | _
 			HttpMethod.GET     | _
@@ -173,12 +169,11 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.name == "get"
-			span.traceId == 1L
-			span.parentId == 1L
-			span.id == 1L
-			span.annotations.findAll { it.value == "ss" }.size() == 1
-			span.annotations.findAll { it.value == "sr" }.size() == 1
+			span.name() == "get"
+			span.traceId() == "0000000000000001"
+			span.parentId() == "0000000000000001"
+			span.id() == "0000000000000001"
+			span.kind() == Span.Kind.SERVER
 	}
 
 
@@ -204,7 +199,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.binaryAnnotations.find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
 		where:
 			status                                 | _
 			HttpResponseStatus.CONTINUE            | _
@@ -233,8 +228,8 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.binaryAnnotations.find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
-			span.binaryAnnotations.find { it -> it.key == Constants.ERROR } == null
+			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "error" } == null
 		where:
 			status                                | _
 			HttpResponseStatus.MOVED_PERMANENTLY  | _
@@ -269,8 +264,8 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.binaryAnnotations.find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
-			span.binaryAnnotations.find { it -> it.key == Constants.ERROR } != null
+			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "error" } != null
 		where:
 			status                                           | _
 			HttpResponseStatus.BAD_REQUEST                   | _
@@ -308,8 +303,8 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.binaryAnnotations.find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
-			span.binaryAnnotations.find { it -> it.key == Constants.ERROR } != null
+			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "error" } != null
 		where:
 			status                                        | _
 			HttpResponseStatus.INTERNAL_SERVER_ERROR      | _
@@ -412,10 +407,8 @@ class ServerTracingModuleSpec extends Specification {
 		then: 'the correct number of spans is reported (one server span, one client span)'
 			assertThat(spans).isNotEmpty()
 			assertThat(spans).hasSize(2)
-		and: 'both server span and client span have the same trace id'
-			def serverSpan = spans.find{ s -> s.annotations.find {it -> it.value == Constants.SERVER_RECV}}
-			def clientSpan = spans.find{ s -> s.annotations.find {it -> it.value == Constants.CLIENT_RECV}}
-			clientSpan.traceId == serverSpan.traceId
+		and: 'contains both server and client span kinds'
+			assertThat(spans*.kind()).contains(Span.Kind.SERVER, Span.Kind.CLIENT)
 		cleanup:
 			webServer.shutdown()
 

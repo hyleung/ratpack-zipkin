@@ -20,8 +20,7 @@ import ratpack.zipkin.support.TestReporter
 import spock.lang.AutoCleanup
 import spock.lang.Specification
 import spock.lang.Unroll
-import zipkin.Constants
-import zipkin.Span
+import zipkin2.Span
 import zipkin.TraceKeys
 
 import static org.assertj.core.api.Assertions.assertThat
@@ -52,7 +51,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 	void harnessSetup(Execution e) {
 		HttpTracing httpTracing = HttpTracing.create(Tracing.newBuilder()
 				.currentTraceContext(new RatpackCurrentTraceContext({ -> e}))
-				.reporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
+				.spanReporter(reporter).sampler(Sampler.ALWAYS_SAMPLE)
 				.localServiceName("embedded")
 				.build())
 
@@ -74,11 +73,9 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			reporter.spans.size() == 1
 			Span span = reporter.spans.get(0)
-			span.name == method.name.toLowerCase()
-		and: "should contain CS annotation"
-			assertThat(span.annotations.findAll {it.value == Constants.CLIENT_SEND}).isNotEmpty()
-		and: "should contain CR annotation"
-			assertThat(span.annotations.findAll {it.value == Constants.CLIENT_RECV}).isNotEmpty()
+			span.name() == method.name.toLowerCase()
+		and: "should contain client span"
+			assertThat(span.kind() == Span.Kind.CLIENT)
 		where:
 			method | _
 			HttpMethod.GET | _
@@ -122,10 +119,8 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}.value
 		then:
 			Span span = reporter.spans.get(0)
-		and: "should not contain http status code annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isEmpty()
-		and: "should contain http path annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
+		and: "should contain path tag but not status code tag"
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_PATH)
 		where:
 			status | _
 			HttpResponseStatus.OK | _
@@ -147,10 +142,8 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}
 		then:
 			Span span = reporter.spans.get(0)
-		and: "should contain http status code annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isNotEmpty()
-		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
+		and: "should contain http status code, path and error tags"
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_STATUS_CODE, TraceKeys.HTTP_PATH, "error")
 		where:
 			status | _
 			HttpResponseStatus.BAD_REQUEST | _
@@ -176,12 +169,8 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}
 		then:
 			Span span = reporter.spans.get(0)
-		and: "should contain http status code annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isNotEmpty()
-		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
-		and: "should contain error annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == Constants.ERROR}).isNotEmpty()
+		and: "should contain status, path and error tags"
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_STATUS_CODE, TraceKeys.HTTP_PATH, "error")
 		where:
 			status | _
 			HttpResponseStatus.INTERNAL_SERVER_ERROR | _
@@ -204,9 +193,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			response.getStatusCode() == 200
 			Span span = reporter.spans.get(0)
-		and: "should not contain http status code annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_STATUS_CODE}).isEmpty()
-		and: "should contain http url annotation"
-			assertThat(span.binaryAnnotations.findAll {it.key == TraceKeys.HTTP_PATH}).isNotEmpty()
+		and: "should contain path tag but not status code tag"
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_PATH)
 	}
 }
