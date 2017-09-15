@@ -21,7 +21,7 @@ class LocalTracingSpec extends Specification {
 	Tracing tracing
 
 	Tracing.Builder tracingBuilder(Execution execution) {
-		return Tracing.newBuilder().reporter(reporter)
+		return Tracing.newBuilder().spanReporter(reporter)
 		.currentTraceContext(new RatpackCurrentTraceContext({ -> execution }))
 		.sampler(Sampler.ALWAYS_SAMPLE)
 	}
@@ -62,20 +62,20 @@ class LocalTracingSpec extends Specification {
 		}
 
 		then:
-		List<zipkin.Span> spans = reporter.spans
+		List<zipkin2.Span> spans = reporter.spans
 		spans.size() == 3
-		zipkin.Span parent = spans.find {it.name == "parent"}
-		zipkin.Span child1 = spans.find {it.name == "child1"}
-		zipkin.Span child2 = spans.find {it.name == "child2"}
+		zipkin2.Span parent = spans.find {it.name() == "parent"}
+		zipkin2.Span child1 = spans.find {it.name() == "child1"}
+		zipkin2.Span child2 = spans.find {it.name() == "child2"}
 
 		assert parent
 		assert child1
 		assert child2
 
-		child1.parentId == parent.id
-		child2.parentId == child1.id
-		child1.traceId == parent.traceId
-		child2.traceId == parent.traceId
+		child1.parentId() == parent.id()
+		child2.parentId() == child1.id()
+		child1.traceId() == parent.traceId()
+		child2.traceId() == parent.traceId()
 	}
 
 }

@@ -37,8 +37,8 @@ import ratpack.server.ServerConfig;
 import ratpack.zipkin.internal.DefaultServerTracingHandler;
 import ratpack.zipkin.internal.RatpackCurrentTraceContext;
 import ratpack.zipkin.internal.ZipkinHttpClientImpl;
-import zipkin.Endpoint;
-import zipkin.Span;
+import zipkin2.Endpoint;
+import zipkin2.Span;
 import zipkin.reporter.Reporter;
 
 import java.net.InetAddress;
@@ -91,7 +91,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
                              .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(),
                                  serverConfig.getAddress()))
                              .localServiceName(config.serviceName)
-                             .reporter(config.spanReporter)
+                             .spanReporter(config.spanReporter)
                              .build();
     return HttpTracing.newBuilder(tracing)
                       .clientParser(config.clientParser)
@@ -107,7 +107,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
   }
 
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
-    Endpoint.Builder builder = Endpoint.builder();
+    Endpoint.Builder builder = Endpoint.newBuilder();
     if (!builder.parseIp(configAddress)) {
       builder = Platform.get().localEndpoint().toBuilder();
     }
@@ -119,7 +119,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
    */
   public static class Config {
     private String serviceName = "unknown";
-    private Reporter<Span> spanReporter = Reporter.NOOP;
+    private Reporter<Span> spanReporter = (Span s) -> {};
     private Sampler sampler = Sampler.NEVER_SAMPLE;
     private HttpSampler serverSampler = HttpSampler.TRACE_ID;
     private HttpSampler clientSampler = HttpSampler.TRACE_ID;
