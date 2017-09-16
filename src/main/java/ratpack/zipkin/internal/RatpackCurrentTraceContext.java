@@ -58,8 +58,8 @@ public final class RatpackCurrentTraceContext extends CurrentTraceContext {
    * registry for the forked execution.  This is marked deprecated as we prefer not to
    * expose details of the RatpackCurrentTraceContext implementation.
    *
-   * @param traceContext
-   * @return
+   * @param traceContext a trace context.
+   * @return a holder for the trace context, which can be put into the registry.
    */
   @Deprecated
   public static TraceContextHolder wrap(TraceContext traceContext) {
