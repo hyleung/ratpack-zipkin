@@ -1,6 +1,7 @@
 package ratpack.zipkin
 
 import brave.SpanCustomizer
+import brave.Tracing
 import brave.http.HttpSampler
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -10,6 +11,9 @@ import ratpack.path.PathBinding
 import ratpack.zipkin.internal.ZipkinHttpClientImpl
 import ratpack.zipkin.support.B3PropagationHeaders
 import spock.lang.Unroll
+import zipkin2.reporter.Reporter
+
+import java.util.concurrent.ConcurrentLinkedDeque
 
 import static org.assertj.core.api.Assertions.*
 
@@ -21,6 +25,7 @@ import ratpack.http.HttpMethod
 import ratpack.zipkin.support.TestReporter
 import spock.lang.Specification
 import zipkin2.Span
+import zipkin.Constants
 import zipkin.TraceKeys
 
 class ServerTracingModuleSpec extends Specification {
@@ -57,7 +62,7 @@ class ServerTracingModuleSpec extends Specification {
 								.sampler(Sampler.create(1f))
 								.clientSampler(HttpSampler.TRACE_ID)
 								.serverSampler(HttpSampler.TRACE_ID)
-								.spanReporter({Span s -> })
+								.spanReporter(Reporter.NOOP)
 					})
 				}).handlers {
 					chain ->
@@ -70,8 +75,65 @@ class ServerTracingModuleSpec extends Specification {
 			app.test { t -> t.get() }
 	}
 
+	def 'Should initialize with legacy NOOP Reporter'() {
+		given:
+			def app = GroovyEmbeddedApp.of { server ->
+				server.registry(Guice.registry { binding ->
+					binding.module(ServerTracingModule.class, { config ->
+						config
+								.serviceName("embedded")
+								.sampler(Sampler.create(1f))
+								.spanReporter(zipkin.reporter.Reporter.NOOP)
+					})
+				}).handlers {
+					chain ->
+						chain.all {
+							ctx -> ctx.render("foo")
+						}
+				}
+			}
+		expect:
+			app.test { t -> t.get() }
+	}
 
-	def 'Should collect SR/SS spans with Reporter'() {
+	def 'Should collect server spans with deprecated Reporter'() {
+		given:
+			def spans = new ConcurrentLinkedDeque<>()
+			def reporter = new zipkin.reporter.Reporter<zipkin.Span>(){
+				@Override
+				void report(zipkin.Span span) {
+					spans.add(span)
+				}
+			}
+			def app = GroovyEmbeddedApp.of { server ->
+				server.registry(Guice.registry { binding ->
+					binding.module(ServerTracingModule.class, { config ->
+						config
+										.serviceName("embedded")
+										.sampler(Sampler.create(1f))
+										.spanReporter(reporter)
+					})
+				}).handlers {
+					chain ->
+						chain.all {
+							ctx -> ctx.render("foo")
+						}
+				}
+			}
+		when:
+			app.test { t -> t.get() }
+		then:
+			spans.size() == 1
+			zipkin.Span span = spans.first
+		and: "should contain SS annotation"
+			span.annotations.findAll { it.value == Constants.SERVER_SEND }.size() == 1
+		and: "should contain SR annotation"
+			span.annotations.findAll { it.value == Constants.SERVER_RECV }.size() == 1
+	}
+
+
+
+	def 'Should collect server spans with Reporter'() {
 		given:
 			def app = GroovyEmbeddedApp.of { server ->
 				server.registry(Guice.registry { binding ->
@@ -177,7 +239,7 @@ class ServerTracingModuleSpec extends Specification {
 	}
 
 
-	def 'Should report span with http status code binary annotation for 1xx (#status) responses'(HttpResponseStatus status) {
+	def 'Should report span with http status code tag for 1xx (#status) responses'(HttpResponseStatus status) {
 		given:
 			def app = GroovyEmbeddedApp.of { server ->
 				server.registry(Guice.registry { binding ->
@@ -206,7 +268,7 @@ class ServerTracingModuleSpec extends Specification {
 			HttpResponseStatus.SWITCHING_PROTOCOLS | _
 	}
 
-	def 'Should report span with http status code binary annotation for 3xx (#status) responses'(HttpResponseStatus status) {
+	def 'Should report span with http status code tag for 3xx (#status) responses'(HttpResponseStatus status) {
 		given:
 			def app = GroovyEmbeddedApp.of { server ->
 				server.registry(Guice.registry { binding ->
@@ -242,7 +304,7 @@ class ServerTracingModuleSpec extends Specification {
 	}
 
 
-	def 'Should report span with http status code binary annotation for 4xx (#status) responses'(HttpResponseStatus status) {
+	def 'Should report span with http status code tag for 4xx (#status) responses'(HttpResponseStatus status) {
 		given:
 			def app = GroovyEmbeddedApp.of { server ->
 				server.registry(Guice.registry { binding ->
@@ -281,7 +343,7 @@ class ServerTracingModuleSpec extends Specification {
 			HttpResponseStatus.GONE                          | _
 	}
 
-	def 'Should report span with http status code binary annotation for 5xx (#status) responses'(HttpResponseStatus status) {
+	def 'Should report span with http status code tag for 5xx (#status) responses'(HttpResponseStatus status) {
 		given:
 			def app = GroovyEmbeddedApp.of { server ->
 				server.registry(Guice.registry { binding ->
@@ -444,8 +506,8 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 		reporter.getSpans().size() == 1
 		Span span = reporter.getSpans().get(0)
-		new String(span.binaryAnnotations.find { it.key == "key1" }.value) == "one"
-		new String(span.binaryAnnotations.find { it.key == "key2" }.value) == "two"
+		span.tags().get("key1") == "one"
+		span.tags().get("key2") == "two"
 	}
 	def 'Should allow span name customization'() {
 		given:
@@ -483,6 +545,6 @@ class ServerTracingModuleSpec extends Specification {
 		then:
             assertThat(reporter.getSpans()).isNotEmpty()
             def span = reporter.getSpans().first()
-            assertThat(span.name).isEqualTo("say/:message")
+            assertThat(span.name()).isEqualTo("say/:message")
 	}
 }

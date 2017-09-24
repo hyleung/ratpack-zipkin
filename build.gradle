@@ -7,6 +7,7 @@ buildscript {
 plugins {
     id 'net.researchgate.release' version '2.4.0'
 }
+apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'idea'
 apply plugin: 'jacoco'
@@ -38,6 +39,9 @@ dependencies {
     compile 'org.slf4j:slf4j-api:1.7.13'
     compile "io.zipkin.brave:brave:${braveVersion}"
     compile "io.zipkin.brave:brave-instrumentation-http:${braveVersion}"
+    // compile vs compileOnly for access to all overloaded parameters on Config.spanReporter
+    compileOnly 'io.zipkin.reporter:zipkin-reporter:1.1.1'
+    testCompile 'io.zipkin.reporter:zipkin-reporter:1.1.1'
     testCompile 'junit:junit:4.12'
     testCompile 'org.assertj:assertj-core:3.4.1'
     testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
