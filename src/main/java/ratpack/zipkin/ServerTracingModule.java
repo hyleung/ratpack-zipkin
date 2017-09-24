@@ -24,11 +24,14 @@ import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
 import brave.internal.Platform;
+import brave.propagation.B3Propagation;
+import brave.propagation.Propagation;
 import brave.sampler.Sampler;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
+import java.net.InetAddress;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
@@ -39,9 +42,7 @@ import ratpack.zipkin.internal.RatpackCurrentTraceContext;
 import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 import zipkin2.Endpoint;
 import zipkin2.Span;
-import zipkin.reporter.Reporter;
-
-import java.net.InetAddress;
+import zipkin2.reporter.Reporter;
 
 /**
  * Module for Zipkin distributed tracing.
@@ -92,6 +93,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
                                  serverConfig.getAddress()))
                              .localServiceName(config.serviceName)
                              .spanReporter(config.spanReporter)
+                             .propagationFactory(config.propagationFactory)
                              .build();
     return HttpTracing.newBuilder(tracing)
                       .clientParser(config.clientParser)
@@ -119,7 +121,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
    */
   public static class Config {
     private String serviceName = "unknown";
-    private Reporter<Span> spanReporter = (Span s) -> {};
+    private Reporter<Span> spanReporter = Reporter.NOOP;
     private Sampler sampler = Sampler.NEVER_SAMPLE;
     private HttpSampler serverSampler = HttpSampler.TRACE_ID;
     private HttpSampler clientSampler = HttpSampler.TRACE_ID;
@@ -127,6 +129,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private HttpClientParser clientParser = new HttpClientParser();
     private HttpServerParser serverParser = new HttpServerParser();
     private SpanNameProvider spanNameProvider = (req, pathBinding) -> req.getMethod().getName();
+    private Propagation.Factory propagationFactory = B3Propagation.FACTORY;
 
     /**
      * Set the service name.
@@ -150,6 +153,27 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
      */
     public Config spanReporter(final Reporter<Span> reporter) {
       this.spanReporter = reporter;
+      return this;
+    }
+
+    /** @deprecated please use {@link #spanReporter(Reporter)} */
+    // Until this is removed, we need a mandatory dep on io.zipkin.reporter:zipkin-reporter
+    // due to overloading requiring access to all overloaded types
+    @Deprecated
+    public Config spanReporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
+      if (reporter == zipkin.reporter.Reporter.NOOP) {
+        this.spanReporter = Reporter.NOOP;
+        return this;
+      }
+      this.spanReporter = new Reporter<zipkin2.Span>() {
+        @Override public void report(zipkin2.Span span) {
+          reporter.report(zipkin.internal.V2SpanConverter.toSpan(span));
+        }
+
+        @Override public String toString() {
+          return reporter.toString();
+        }
+      };
       return this;
     }
 
@@ -235,6 +259,19 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
      */
     public Config spanNameProvider(final SpanNameProvider spanNameProvider) {
       this.spanNameProvider = spanNameProvider;
+      return this;
+    }
+
+    /**
+     * Set the {@link Propagation.Factory}.
+     *
+     * Defaults to {@link B3Propagation.Factory}.
+     *
+     * @param propagationFactory
+     * @return
+     */
+    public Config propagationFactory(final Propagation.Factory propagationFactory) {
+      this.propagationFactory = propagationFactory;
       return this;
     }
   }
