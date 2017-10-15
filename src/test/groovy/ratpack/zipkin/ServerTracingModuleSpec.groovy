@@ -1,5 +1,6 @@
 package ratpack.zipkin
 
+import brave.SpanCustomizer
 import brave.http.HttpSampler
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -414,6 +415,41 @@ class ServerTracingModuleSpec extends Specification {
 			clientSpan.traceId == serverSpan.traceId
 		cleanup:
 			webServer.shutdown()
+
+	}
+
+	def 'Should customize current span'() {
+		given:
+			def app = GroovyEmbeddedApp.of { server ->
+				server.registry(Guice.registry { binding ->
+					binding.module(ServerTracingModule.class, { config ->
+						config
+								.serviceName("embedded")
+								.sampler(Sampler.create(1f))
+								.spanReporter(reporter)
+					})
+				}).handlers {
+					chain ->
+						chain.all { ctx ->
+							ctx.get(SpanCustomizer)
+								.tag("key1", "one")
+								.tag("key2", "two")
+
+							ctx.render("foo")
+						}
+				}
+			}
+		when:
+			app.test { t ->
+				t.request { spec ->
+					spec.method(HttpMethod.GET)
+				}
+			}
+		then:
+			reporter.getSpans().size() == 1
+			Span span = reporter.getSpans().get(0)
+			new String(span.binaryAnnotations.find {it.key == "key1"}.value) == "one"
+			new String(span.binaryAnnotations.find {it.key == "key2"}.value) == "two"
 
 	}
 }

@@ -15,6 +15,9 @@
  */
 package ratpack.zipkin;
 
+import brave.CurrentSpanCustomizer;
+import brave.SpanCustomizer;
+import brave.Tracer;
 import brave.Tracing;
 import brave.http.HttpClientParser;
 import brave.http.HttpSampler;
@@ -24,6 +27,7 @@ import brave.internal.Platform;
 import brave.sampler.Sampler;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
@@ -43,22 +47,44 @@ import java.net.InetAddress;
  * Module for Zipkin distributed tracing.
  */
 public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.Config> {
+
   @Override
   protected void configure() {
-    bind(ServerTracingHandler.class).to(DefaultServerTracingHandler.class);
+    bind(ServerTracingHandler.class)
+        .to(DefaultServerTracingHandler.class)
+        .in(Singleton.class);
+
+    bind(HttpClient.class).annotatedWith(Zipkin.class)
+        .to(ZipkinHttpClientImpl.class)
+        .in(Singleton.class);
+
+    bind(ZipkinHttpClientImpl.class);
+
     Provider<ServerTracingHandler> serverTracingHandlerProvider =
         getProvider(ServerTracingHandler.class);
 
-
-    bind(HttpClient.class).annotatedWith(Zipkin.class).to(ZipkinHttpClientImpl.class);
-    bind(ZipkinHttpClientImpl.class);
-
     Multibinder.newSetBinder(binder(), HandlerDecorator.class).addBinding()
-        .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProvider.get()));
+        .toProvider(() -> HandlerDecorator.prepend(serverTracingHandlerProvider.get()))
+        .in(Singleton.class);
   }
 
-  @Provides
-  public HttpTracing getTracing(final Config config, final ServerConfig serverConfig) {
+  @Provides @Singleton
+  public SpanCustomizer getSpanCustomizer(final Tracing tracing) {
+    return CurrentSpanCustomizer.create(tracing);
+  }
+
+  @Provides @Singleton
+  public Tracer getTracer(final Tracing tracing) {
+    return tracing.tracer();
+  }
+
+  @Provides @Singleton
+  public Tracing getTracing(final HttpTracing httpTracing) {
+    return httpTracing.tracing();
+  }
+
+  @Provides @Singleton
+  public HttpTracing getHttpTracing(final Config config, final ServerConfig serverConfig) {
     Tracing tracing = Tracing.newBuilder()
         .sampler(config.sampler)
         .currentTraceContext(new RatpackCurrentTraceContext())
