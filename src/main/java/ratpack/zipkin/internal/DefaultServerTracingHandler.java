@@ -19,9 +19,10 @@ import ratpack.http.Response;
 import ratpack.http.Status;
 import ratpack.path.PathBinding;
 import ratpack.zipkin.ServerRequest;
-import ratpack.zipkin.ServerResponse;
 import ratpack.zipkin.ServerTracingHandler;
 import ratpack.zipkin.SpanNameProvider;
+
+import java.util.Optional;
 
 /**
  * {@link Handler} for Zipkin tracing.
@@ -29,14 +30,14 @@ import ratpack.zipkin.SpanNameProvider;
 public final class DefaultServerTracingHandler implements ServerTracingHandler {
 
   private final Tracing tracing;
-  private final HttpServerHandler<ServerRequest, ServerResponse> handler;
+  private final HttpServerHandler<ServerRequest, Response> handler;
   private final TraceContext.Extractor<ServerRequest> extractor;
   private final SpanNameProvider spanNameProvider;
   private final Logger logger = LoggerFactory.getLogger(DefaultServerTracingHandler.class);
   @Inject
   public DefaultServerTracingHandler(final HttpTracing httpTracing, final SpanNameProvider spanNameProvider) {
     this.tracing = httpTracing.tracing();
-    this.handler = HttpServerHandler.<ServerRequest, ServerResponse>create(httpTracing, new ServerHttpAdapter());
+    this.handler = HttpServerHandler.<ServerRequest, Response>create(httpTracing, new ServerHttpAdapter());
     this.extractor = tracing.propagation().extractor((ServerRequest r, String name) -> r.getHeaders().get(name));
     this.spanNameProvider = spanNameProvider;
   }
@@ -48,10 +49,9 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
 
     ctx.getResponse().beforeSend(response -> {
-      ServerResponseImpl wrappedResponse = new ServerResponseImpl(response, ctx);
-      String name = spanNameProvider.spanName(request, wrappedResponse);
+      String name = spanNameProvider.spanName(request, Optional.of(ctx.getPathBinding()));
       span.name(name);
-      handler.handleSend(wrappedResponse, null, span);
+      handler.handleSend(response, null, span);
       span.finish();
       scope.close();
     });
@@ -87,23 +87,4 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     }
   }
 
-  private static class ServerResponseImpl implements ServerResponse {
-    private final Response response;
-    private final Context context;
-
-    private ServerResponseImpl(final Response response, final Context context) {
-      this.response = response;
-      this.context = context;
-    }
-
-    @Override
-    public Status getStatus() {
-      return response.getStatus();
-    }
-
-    @Override
-    public PathBinding getPathBinding() {
-      return context.getPathBinding();
-    }
-  }
 }
