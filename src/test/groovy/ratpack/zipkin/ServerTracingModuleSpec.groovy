@@ -6,6 +6,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import ratpack.handling.Context
 import ratpack.handling.Handler
+import ratpack.path.PathBinding
 import ratpack.zipkin.internal.ZipkinHttpClientImpl
 import ratpack.zipkin.support.B3PropagationHeaders
 import spock.lang.Unroll
@@ -466,8 +467,10 @@ class ServerTracingModuleSpec extends Specification {
                             @Override
                             String spanName(
                                     final ServerRequest requestContext,
-                                    final ServerResponse responseContext) {
-                                return responseContext.getPathBinding().getDescription();
+                                    final Optional<PathBinding> pathBindingOpt) {
+                             	return pathBindingOpt
+									.map{ pathBinding -> pathBinding.getDescription()}
+									.orElse(requestContext.path)
                             }
                         } )
                     }) }).handlers {

@@ -126,7 +126,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
     private HttpClientParser clientParser = new HttpClientParser();
     private HttpServerParser serverParser = new HttpServerParser();
-    private SpanNameProvider spanNameProvider = (req,res) -> req.getMethod().getName();
+    private SpanNameProvider spanNameProvider = (req, pathBinding) -> req.getMethod().getName();
 
     /**
      * Set the service name.
