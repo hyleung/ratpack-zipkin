@@ -46,11 +46,11 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
   public void handle(Context ctx) throws Exception {
     ServerRequest request = new ServerRequestImpl(ctx.getRequest());
     final Span span = handler.handleReceive(extractor, request);
+    span.name(spanNameProvider.spanName(request, Optional.empty()));
     final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
 
     ctx.getResponse().beforeSend(response -> {
-      String name = spanNameProvider.spanName(request, Optional.of(ctx.getPathBinding()));
-      span.name(name);
+      span.name(spanNameProvider.spanName(request, Optional.of(ctx.getPathBinding())));
       handler.handleSend(response, null, span);
       span.finish();
       scope.close();
