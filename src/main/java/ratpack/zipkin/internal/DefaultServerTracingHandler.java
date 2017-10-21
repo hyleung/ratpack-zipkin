@@ -50,7 +50,7 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
 
     ctx.getResponse().beforeSend(response -> {
-      span.name(spanNameProvider.spanName(request, Optional.of(ctx.getPathBinding())));
+      span.name(spanNameProvider.spanName(request, Optional.ofNullable(ctx.getPathBinding())));
       handler.handleSend(response, null, span);
       span.finish();
       scope.close();
