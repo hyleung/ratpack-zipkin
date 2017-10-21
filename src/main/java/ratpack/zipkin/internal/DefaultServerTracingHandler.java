@@ -16,8 +16,6 @@ import ratpack.http.Headers;
 import ratpack.http.HttpMethod;
 import ratpack.http.Request;
 import ratpack.http.Response;
-import ratpack.http.Status;
-import ratpack.path.PathBinding;
 import ratpack.zipkin.ServerRequest;
 import ratpack.zipkin.ServerTracingHandler;
 import ratpack.zipkin.SpanNameProvider;
