@@ -7,6 +7,7 @@ import io.netty.buffer.UnpooledByteBufAllocator
 import io.netty.handler.codec.http.HttpResponseStatus
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import ratpack.exec.Execution
 import ratpack.func.Action
 import ratpack.http.HttpMethod
@@ -87,8 +88,30 @@ class ZipkinHttpClientImplSpec extends Specification {
 			HttpMethod.DELETE | _
 			HttpMethod.HEAD | _
 			HttpMethod.OPTIONS | _
-
 	}
+
+	def "Request should not duplicate headers sent"() {
+		given:
+			webServer.enqueue(new MockResponse().setResponseCode(200))
+
+		when:
+			harness.yield { e ->
+				harnessSetup(e)
+				zipkinHttpClient.request(uri, {spec ->
+					spec.method(HttpMethod.GET).headers.add("X-TEST", "test")
+				})
+			}
+
+		then:
+			reporter.spans.size() == 1
+			Span span = reporter.spans.get(0)
+			span.name == "get"
+
+		then:
+			RecordedRequest request = webServer.takeRequest()
+			request.headers.values("X-TEST").size() == 1
+	}
+
 	def "Request returning 2xx include HTTP_PATH annotation (but *not* status code)"(HttpResponseStatus status) {
 		given:
 			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
