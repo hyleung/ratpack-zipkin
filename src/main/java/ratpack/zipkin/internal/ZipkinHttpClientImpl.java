@@ -43,8 +43,8 @@ import ratpack.http.client.StreamedResponse;
 public final class ZipkinHttpClientImpl implements HttpClient {
 
     private final HttpClient delegate;
-    final HttpClientHandler<WrappedRequestSpec, Integer> handler;
-    final TraceContext.Injector<MutableHeaders> injector;
+    private final HttpClientHandler<WrappedRequestSpec, Integer> handler;
+    private final TraceContext.Injector<MutableHeaders> injector;
 
     @Inject
     public ZipkinHttpClientImpl(final HttpClient delegate, final HttpTracing httpTracing) {
@@ -80,26 +80,25 @@ public final class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        AtomicReference<Span> span = new AtomicReference<>();
+        final AtomicReference<Span> span = new AtomicReference<>();
+
         return delegate
-            .request(uri, action.append(requestSpec -> {
-                WrappedRequestSpec captor = new WrappedRequestSpec(this.handler, this.injector, requestSpec, span);
-                action.execute(captor);
-            }))
+            .request(uri, (RequestSpec requestSpec) -> action.execute(new WrappedRequestSpec(handler, injector, requestSpec, span)))
             .wiretap(response -> responseWithSpan(response, span));
     }
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> action) {
-        AtomicReference<Span> span = new AtomicReference<>();
+        final AtomicReference<Span> span = new AtomicReference<>();
+
         return delegate
-            .requestStream(uri, action.append(requestSpec -> {
-                WrappedRequestSpec captor = new WrappedRequestSpec(this.handler, this.injector, requestSpec, span);
+            .requestStream(uri, (RequestSpec requestSpec) -> {
+                WrappedRequestSpec captor = new WrappedRequestSpec(handler, injector, requestSpec, span);
                 // streamed request doesn't set the http method.
                 // start span here until a better solution presents itself.
-                span.set(this.handler.handleSend(this.injector, captor.getHeaders(), captor));
+                span.set(handler.handleSend(injector, captor.getHeaders(), captor));
                 action.execute(captor);
-            }))
+            })
             .wiretap(response -> streamedResponseWithSpan(response, span));
     }
 
