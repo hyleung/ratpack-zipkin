@@ -55,7 +55,7 @@ Version 2 of this library incorporates Brave 4.x.
 Using Gradle:
 
 ```
-compile 'com.github.hyleung:ratpack-zipkin:2.0.0'
+compile 'com.github.hyleung:ratpack-zipkin:2.1.0'
 ```
 
 Using Maven:
@@ -64,7 +64,7 @@ Using Maven:
 <dependency>
   <groupId>com.github.hyleung</groupId>
   <artifactId>ratpack-zipkin</artifactId>
-  <version>2.0.0</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
@@ -96,6 +96,17 @@ Where `aSpanReporter` is some instance of `zipkin.reporter.SpanReporter` (e.g. `
 By default, the tracing module uses the Brave HTTP's `HttpServerParser` for parsing HTTP requests
 into spans. To customize this behaviour (e.g. add tags based on some data in the request), you'll 
 need to subclass `HttpServerParser` and configure the module to use the custom parser.
+
+Span names can be customized by configuring `SpanNameProvider`:
+
+```
+config.spanNameProvider((request,pathBindingOpt) -> pathBindingOpt
+    .map(pathBinding -> pathBinding.getDescription())
+    .orElse(request.getPath())) )
+```
+
+Note that due to some Ratpack implementation details, the `PathBinding` may not be present in some edge cases (e.g. if
+for some reason an error occurs and no response is sent) - hence the `Optional` type.
 
 #### Client Spans
 
