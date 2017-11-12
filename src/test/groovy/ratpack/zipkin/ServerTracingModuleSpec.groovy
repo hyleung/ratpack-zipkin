@@ -1,7 +1,6 @@
 package ratpack.zipkin
 
 import brave.SpanCustomizer
-import brave.Tracing
 import brave.http.HttpSampler
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -62,7 +61,7 @@ class ServerTracingModuleSpec extends Specification {
 								.sampler(Sampler.create(1f))
 								.clientSampler(HttpSampler.TRACE_ID)
 								.serverSampler(HttpSampler.TRACE_ID)
-								.spanReporter(Reporter.NOOP)
+								.spanReporterV2(Reporter.NOOP)
 					})
 				}).handlers {
 					chain ->
@@ -83,7 +82,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(zipkin.reporter.Reporter.NOOP)
+								.spanReporterV2(zipkin.reporter.Reporter.NOOP)
 					})
 				}).handlers {
 					chain ->
@@ -141,7 +140,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -168,7 +167,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -206,7 +205,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -247,7 +246,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -276,7 +275,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -312,7 +311,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -351,7 +350,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -386,7 +385,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.NEVER_SAMPLE)
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -410,7 +409,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.NEVER_SAMPLE)
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -446,7 +445,7 @@ class ServerTracingModuleSpec extends Specification {
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.ALWAYS_SAMPLE)
-								.spanReporter(reporter)
+								.spanReporterV2(reporter)
 					})
 				}).handlers {
 					chain ->
@@ -484,7 +483,7 @@ class ServerTracingModuleSpec extends Specification {
 					config
 							.serviceName("embedded")
 							.sampler(Sampler.create(1f))
-							.spanReporter(reporter)
+							.spanReporterV2(reporter)
 				})
 			}).handlers {
 				chain ->
@@ -517,7 +516,7 @@ class ServerTracingModuleSpec extends Specification {
                         config
                             .serviceName("embedded")
                             .sampler(Sampler.ALWAYS_SAMPLE)
-                            .spanReporter(reporter)
+                            .spanReporterV2(reporter)
                             .spanNameProvider(new SpanNameProvider() {
                             @Override
                             String spanName(
