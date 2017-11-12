@@ -19,6 +19,13 @@ Start the Zipkin stack by running;
 ```
 docker-compose up
 ```
+## Local development
+
+To build and install into your local environment:
+
+```
+./gradlew clean install
+```
 
 ## Snapshot Releases
 
