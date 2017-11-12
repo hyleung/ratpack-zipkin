@@ -156,14 +156,13 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
 
-    /** @deprecated please use {@link #spanReporterV2(Reporter)}
+
+    /** @deprecated please use {@link #spanReporterV2(Reporter)}}
      *
      * @param reporter a V1 reporter
      *
      * @return the config
      * */
-    // Until this is removed, we need a mandatory dep on io.zipkin.reporter:zipkin-reporter
-    // due to overloading requiring access to all overloaded types
     @Deprecated
     public Config spanReporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
       if (reporter == zipkin.reporter.Reporter.NOOP) {

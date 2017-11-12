@@ -53,7 +53,7 @@ Using Maven:
 </repositories>
 ```
 
-## v2 
+## Ratpack-zipkin V2 
 
 Version 2 of this library incorporates Brave 4.x.
 
@@ -193,8 +193,32 @@ ParallelBatch<Integer> batch
                           .withContext(currentContext);
 ```
 
+### Zipkin V2 Support
 
-## v1 
+To configure the library to use Zipkin v2, set the `SpanReporter` like this:
+
+```
+.module(ServerTracingModule.class, config -> {
+        config
+            .serviceName("ratpack-demo")
+            .spanReporterV2(reporter);
+    })
+```
+
+...there `reporter` is some Zipkin v2 reporter.
+
+E.g.
+
+```
+Reporter<Span> reporter =
+    AsyncReporter.create(OkHttpSender
+                         .create(String.format("http://%s:9411/api/v2/spans",
+                                               okHttpHost)));
+```
+
+Note that v1 Reporter support is now *deprecated*.
+
+## Ratpack-zipkin V1
 
 ### v1 Binaries
 

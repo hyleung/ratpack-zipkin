@@ -2,6 +2,8 @@ package ratpack.zipkin
 
 import brave.SpanCustomizer
 import brave.http.HttpSampler
+import brave.propagation.B3Propagation
+import brave.propagation.Propagation
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import ratpack.handling.Context
@@ -545,5 +547,59 @@ class ServerTracingModuleSpec extends Specification {
             assertThat(reporter.getSpans()).isNotEmpty()
             def span = reporter.getSpans().first()
             assertThat(span.name()).isEqualTo("say/:message")
+	}
+
+	def 'Should allow configuration of PropagationFactory'() {
+		given:
+            def app = GroovyEmbeddedApp.of { server ->
+                server.registry(Guice.registry { binding ->
+                    binding.module(ServerTracingModule.class, { config ->
+                        config
+                                .serviceName("embedded")
+                                .sampler(Sampler.ALWAYS_SAMPLE)
+                                .spanReporterV2(reporter)
+								.propagationFactory(B3Propagation.FACTORY)
+                    })}).handlers {
+                    chain ->
+                        chain.get("say/:message", new Handler() {
+                            @Override
+                            void handle(final Context ctx) throws Exception {
+                                ctx.response.send("yo!")
+                            }
+                        })
+                }
+            }
+		when:
+            app.test { t ->
+                t.get("say/hello")
+            }
+		then:
+            assertThat(reporter.getSpans()).isNotEmpty()
+	}
+
+	def 'Should allow configuration of v1 NOOP Reporter'() {
+		given: def app = GroovyEmbeddedApp.of { server ->
+                server.registry(Guice.registry { binding ->
+                    binding.module(ServerTracingModule.class, { config ->
+                        config
+                                .serviceName("embedded")
+                                .sampler(Sampler.ALWAYS_SAMPLE)
+                                .spanReporterV1(zipkin.reporter.Reporter.NOOP)
+                    })}).handlers {
+                    chain ->
+                        chain.get("say/:message", new Handler() {
+                            @Override
+                            void handle(final Context ctx) throws Exception {
+                                ctx.response.send("yo!")
+                            }
+                        })
+                }
+            }
+		when:
+            app.test { t ->
+                t.get("say/hello")
+            }
+		then:
+            assertThat(reporter.getSpans()).isEmpty()
 	}
 }
