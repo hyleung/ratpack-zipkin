@@ -44,6 +44,8 @@ import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
 
+import java.util.Collections;
+
 /**
  * Module for Zipkin distributed tracing.
  */
@@ -108,6 +110,16 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     return config.spanNameProvider;
   }
 
+  @Provides
+  public RequestTagCustomizer requestTagCustomizer(final Config config) {
+    return config.requestTagCustomizer;
+  }
+
+  @Provides
+  public ResponseTagCustomizer responseTagCustomizer(final Config config) {
+    return config.responseTagCustomizer;
+  }
+
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
     Endpoint.Builder builder = Endpoint.newBuilder();
     if (!builder.parseIp(configAddress)) {
@@ -131,6 +143,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private SpanNameProvider spanNameProvider = (req, pathBinding) -> req.getMethod().getName();
     private Propagation.Factory propagationFactory = B3Propagation.FACTORY;
 
+    private RequestTagCustomizer requestTagCustomizer = (request) -> Collections.emptyList();
+    private ResponseTagCustomizer responseTagCustomizer = (response, pathBinding) -> Collections.emptyList();
     /**
      * Set the service name.
      *
@@ -276,6 +290,27 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
      */
     public Config propagationFactory(final Propagation.Factory propagationFactory) {
       this.propagationFactory = propagationFactory;
+      return this;
+    }
+
+    /* Set a function for customizing tags on the Span.
+    *
+    * @param requestTagCustomizer a function taking a Ratpack request.
+    * @return a list of key/value pairs
+    */
+    public Config requestTagCustomizer(final RequestTagCustomizer requestTagCustomizer) {
+      this.requestTagCustomizer = requestTagCustomizer;
+      return this;
+    }
+
+    /**
+     * Set a function for customizing tags on a Span.
+     *
+     * @param responseTagCustomizer a function taking a Ratpack response and PathBinding.
+     * @return a list of key/value pairs
+     */
+    public Config responseTagCustomizer(final ResponseTagCustomizer responseTagCustomizer) {
+      this.responseTagCustomizer = responseTagCustomizer;
       return this;
     }
   }

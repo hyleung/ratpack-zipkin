@@ -6,8 +6,10 @@ import brave.propagation.B3Propagation
 import brave.propagation.Propagation
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import ratpack.func.Pair
 import ratpack.handling.Context
 import ratpack.handling.Handler
+import ratpack.http.Response
 import ratpack.path.PathBinding
 import ratpack.zipkin.internal.ZipkinHttpClientImpl
 import ratpack.zipkin.support.B3PropagationHeaders
@@ -15,6 +17,8 @@ import spock.lang.Unroll
 import zipkin2.reporter.Reporter
 
 import java.util.concurrent.ConcurrentLinkedDeque
+
+import java.util.stream.Collectors
 
 import static org.assertj.core.api.Assertions.*
 
@@ -549,6 +553,78 @@ class ServerTracingModuleSpec extends Specification {
             assertThat(span.name()).isEqualTo("say/:message")
 	}
 
+
+	def 'Should allow span tag customization from request'() {
+		given:
+            def app = GroovyEmbeddedApp.of { server ->
+                server.registry(Guice.registry { binding ->
+                    binding.module(ServerTracingModule.class, { config ->
+                        config
+                            .serviceName("embedded")
+                            .sampler(Sampler.ALWAYS_SAMPLE)
+                            .spanReporterV2(reporter)
+							.requestTagCustomizer(new RequestTagCustomizer() {
+							@Override
+							List<Pair<String, String>> tags(final ServerRequest request) {
+								return Collections.singletonList(Pair.pair("foo","bar"))
+							}
+						})
+                    }) }).handlers {
+                    chain ->
+                        chain.get("/test", new Handler() {
+                            @Override
+                            void handle(final Context ctx) throws Exception {
+                                ctx.response.send("yo!")
+                            }
+                        })
+                }
+            }
+		when:
+            app.test { t ->
+                t.get("say/hello")
+            }
+		then:
+            assertThat(reporter.getSpans()).isNotEmpty()
+	}
+
+	def 'Should allow span tag customization from response'() {
+		given:
+            def app = GroovyEmbeddedApp.of { server ->
+                server.registry(Guice.registry { binding ->
+                    binding.module(ServerTracingModule.class, { config ->
+                        config
+                            .serviceName("embedded")
+                            .sampler(Sampler.ALWAYS_SAMPLE)
+                            .spanReporterV2(reporter)
+                            .responseTagCustomizer(new ResponseTagCustomizer() {
+							@Override
+							List<Pair<String, String>> tags(final Response response, final PathBinding pathBinding) {
+								return pathBinding.getTokens()
+										.entrySet().stream()
+										.map{ entry -> Pair.of(entry.key, entry.value) }.collect(Collectors.toList())
+							}
+						})
+                    }) }).handlers {
+                    chain ->
+                        chain.get("say/:msg", new Handler() {
+                            @Override
+                            void handle(final Context ctx) throws Exception {
+                                ctx.response.send("yo!")
+                            }
+                        })
+                }
+            }
+		when:
+            app.test { t ->
+                t.get("/say/hello")
+            }
+		then:
+            assertThat(reporter.getSpans()).isNotEmpty()
+            def span = reporter.getSpans().first()
+            def tag = span.tags().get("msg")
+            tag.getBytes() == "hello".getBytes()
+	}
+
 	def 'Should allow configuration of PropagationFactory'() {
 		given:
             def app = GroovyEmbeddedApp.of { server ->
@@ -601,5 +677,5 @@ class ServerTracingModuleSpec extends Specification {
             }
 		then:
             assertThat(reporter.getSpans()).isEmpty()
-	}
+  }
 }
