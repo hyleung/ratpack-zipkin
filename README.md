@@ -62,7 +62,7 @@ Version 2 of this library incorporates Brave 4.x.
 Using Gradle:
 
 ```
-compile 'com.github.hyleung:ratpack-zipkin:2.1.0'
+compile 'com.github.hyleung:ratpack-zipkin:2.2.0'
 ```
 
 Using Maven:
@@ -71,7 +71,7 @@ Using Maven:
 <dependency>
   <groupId>com.github.hyleung</groupId>
   <artifactId>ratpack-zipkin</artifactId>
-  <version>2.1.0</version>
+  <version>2.2.0</version>
 </dependency>
 ```
 
