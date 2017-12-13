@@ -16,9 +16,11 @@ import ratpack.http.Headers;
 import ratpack.http.HttpMethod;
 import ratpack.http.Request;
 import ratpack.http.Response;
+import ratpack.http.Status;
+import ratpack.path.PathBinding;
 import ratpack.zipkin.ServerRequest;
+import ratpack.zipkin.ServerResponse;
 import ratpack.zipkin.ServerTracingHandler;
-import ratpack.zipkin.SpanNameProvider;
 
 import java.util.Optional;
 
@@ -28,28 +30,25 @@ import java.util.Optional;
 public final class DefaultServerTracingHandler implements ServerTracingHandler {
 
   private final Tracing tracing;
-  private final HttpServerHandler<ServerRequest, Response> handler;
+  private final HttpServerHandler<ServerRequest, ServerResponse> handler;
   private final TraceContext.Extractor<ServerRequest> extractor;
-  private final SpanNameProvider spanNameProvider;
   private final Logger logger = LoggerFactory.getLogger(DefaultServerTracingHandler.class);
   @Inject
-  public DefaultServerTracingHandler(final HttpTracing httpTracing, final SpanNameProvider spanNameProvider) {
+  public DefaultServerTracingHandler(final HttpTracing httpTracing) {
     this.tracing = httpTracing.tracing();
-    this.handler = HttpServerHandler.<ServerRequest, Response>create(httpTracing, new ServerHttpAdapter());
+    this.handler = HttpServerHandler.<ServerRequest, ServerResponse>create(httpTracing, new ServerHttpAdapter());
     this.extractor = tracing.propagation().extractor((ServerRequest r, String name) -> r.getHeaders().get(name));
-    this.spanNameProvider = spanNameProvider;
   }
 
   @Override
   public void handle(Context ctx) throws Exception {
     ServerRequest request = new ServerRequestImpl(ctx.getRequest());
     final Span span = handler.handleReceive(extractor, request);
-    span.name(spanNameProvider.spanName(request, Optional.empty()));
     final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
 
     ctx.getResponse().beforeSend(response -> {
-      span.name(spanNameProvider.spanName(request, Optional.ofNullable(ctx.getPathBinding())));
-      handler.handleSend(response, null, span);
+      ServerResponse serverResponse = new ServerResponseImpl(response, request, ctx.getPathBinding());
+      handler.handleSend(serverResponse, null, span);
       span.finish();
       scope.close();
     });
@@ -84,5 +83,33 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
       return request.getHeaders();
     }
   }
+
+  private static class ServerResponseImpl implements ServerResponse {
+    private final Response response;
+    private final ServerRequest request;
+    private final PathBinding pathBinding;
+
+    public ServerResponseImpl(final Response response, final ServerRequest request, final PathBinding pathBinding) {
+      this.response = response;
+      this.request = request;
+      this.pathBinding = pathBinding;
+    }
+
+    @Override
+    public Optional<PathBinding> pathBinding() {
+      return Optional.ofNullable(pathBinding);
+    }
+
+    @Override
+    public ServerRequest getRequest() {
+      return this.request;
+    }
+
+    @Override
+    public Status getStatus() {
+      return this.response.getStatus();
+    }
+  }
+
 
 }

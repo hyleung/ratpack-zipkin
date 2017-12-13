@@ -39,6 +39,7 @@ import ratpack.http.client.HttpClient;
 import ratpack.server.ServerConfig;
 import ratpack.zipkin.internal.DefaultServerTracingHandler;
 import ratpack.zipkin.internal.RatpackCurrentTraceContext;
+import ratpack.zipkin.internal.RatpackHttpServerParser;
 import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 import zipkin2.Endpoint;
 import zipkin2.Span;
@@ -103,11 +104,6 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
                       .build();
   }
 
-  @Provides
-  public SpanNameProvider spanNameProvider(final Config config) {
-    return config.spanNameProvider;
-  }
-
   private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
     Endpoint.Builder builder = Endpoint.newBuilder();
     if (!builder.parseIp(configAddress)) {
@@ -127,8 +123,9 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private HttpSampler clientSampler = HttpSampler.TRACE_ID;
 
     private HttpClientParser clientParser = new HttpClientParser();
-    private HttpServerParser serverParser = new HttpServerParser();
-    private SpanNameProvider spanNameProvider = (req, pathBinding) -> req.getMethod().getName();
+
+    private SpanNameProvider defaultSpanNameProvider = (req, pathBinding) -> req.getMethod().getName();
+    private HttpServerParser serverParser = new RatpackHttpServerParser(defaultSpanNameProvider);
     private Propagation.Factory propagationFactory = B3Propagation.FACTORY;
 
     /**
@@ -243,10 +240,10 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
      * Set the {@link HttpServerParser}.
      *
      * Defaults to {@link HttpServerParser}, which implements some reasonable
-     * defaults for server spans.
+     * defaults for server spans. If set, this will override any SpanNameProvider.
      * Provide a subclass of {@link HttpServerParser} to customize behaviour.
      *
-     * @param serverParser the client parser
+     * @param serverParser the server parser
      *
      * @return the config
      */
@@ -262,7 +259,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
      * @return the Span name
      */
     public Config spanNameProvider(final SpanNameProvider spanNameProvider) {
-      this.spanNameProvider = spanNameProvider;
+      this.serverParser = new RatpackHttpServerParser(spanNameProvider);
       return this;
     }
 
