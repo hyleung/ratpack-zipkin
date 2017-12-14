@@ -40,8 +40,8 @@ dependencies {
     compile "io.zipkin.brave:brave:${braveVersion}"
     compile "io.zipkin.brave:brave-instrumentation-http:${braveVersion}"
     // compile vs compileOnly for access to all overloaded parameters on Config.spanReporter
-    compileOnly 'io.zipkin.reporter:zipkin-reporter:1.1.1'
-    testCompile 'io.zipkin.reporter:zipkin-reporter:1.1.1'
+    compileOnly 'io.zipkin.reporter:zipkin-reporter:1.1.2'
+    testCompile 'io.zipkin.reporter:zipkin-reporter:1.1.2'
     testCompile 'junit:junit:4.12'
     testCompile 'org.assertj:assertj-core:3.4.1'
     testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
