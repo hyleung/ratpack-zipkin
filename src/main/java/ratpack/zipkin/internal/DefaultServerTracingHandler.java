@@ -44,15 +44,15 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
   public void handle(Context ctx) throws Exception {
     ServerRequest request = new ServerRequestImpl(ctx.getRequest());
     final Span span = handler.handleReceive(extractor, request);
-    final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
 
+    //place the Span in scope so that downstream code (e.g. Ratpack handlers
+    //further on in the chain) can see the Span.
+    final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
     ctx.getResponse().beforeSend(response -> {
       ServerResponse serverResponse = new ServerResponseImpl(response, request, ctx.getPathBinding());
       handler.handleSend(serverResponse, null, span);
-      span.finish();
       scope.close();
     });
-    span.start();
     ctx.next();
   }
 
