@@ -8,6 +8,7 @@ import brave.http.HttpTracing;
 import brave.propagation.TraceContext;
 import javax.inject.Inject;
 
+import com.google.common.net.HostAndPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ratpack.handling.Context;
@@ -18,6 +19,8 @@ import ratpack.http.Request;
 import ratpack.http.Response;
 import ratpack.http.Status;
 import ratpack.path.PathBinding;
+import ratpack.server.PublicAddress;
+import ratpack.server.ServerConfig;
 import ratpack.zipkin.ServerRequest;
 import ratpack.zipkin.ServerResponse;
 import ratpack.zipkin.ServerTracingHandler;
@@ -57,8 +60,7 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
   }
 
   private static class ServerRequestImpl implements ServerRequest {
-   private final Request request;
-
+    private final Request request;
     private ServerRequestImpl(final Request request) {
       this.request = request;
     }
@@ -81,6 +83,20 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     @Override
     public Headers getHeaders() {
       return request.getHeaders();
+    }
+
+    @Override
+    public String getUrl() {
+      PublicAddress publicAddress = request.get(Context.class).get(PublicAddress.class);
+      return publicAddress.builder()
+                          .path(request.getPath())
+                          .params(request.getQueryParams())
+                          .build().toString();
+    }
+
+    @Override
+    public HostAndPort getRemoteAddress() {
+      return request.getRemoteAddress();
     }
   }
 
