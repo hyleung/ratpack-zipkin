@@ -31,7 +31,6 @@ import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
-import java.net.InetAddress;
 import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
@@ -44,6 +43,7 @@ import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
+import java.net.InetAddress;
 
 /**
  * Module for Zipkin distributed tracing.
@@ -276,5 +276,4 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
   }
-
 }

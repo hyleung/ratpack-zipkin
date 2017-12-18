@@ -1,5 +1,6 @@
 package ratpack.zipkin;
 
+import com.google.common.net.HostAndPort;
 import ratpack.http.Headers;
 import ratpack.http.HttpMethod;
 
@@ -33,4 +34,16 @@ public interface ServerRequest {
    * @return The request headers.
    */
   Headers getHeaders();
+
+  /**
+   * The full URL of the request (scheme, host, port, etc.)
+   * @return the full URL
+   */
+  String getUrl();
+
+  /**
+   * The address of the client making the request.
+   * @return the host and port for the client
+   */
+  HostAndPort getRemoteAddress();
 }
