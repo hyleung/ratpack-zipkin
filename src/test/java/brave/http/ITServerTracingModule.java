@@ -8,7 +8,7 @@ import ratpack.zipkin.ServerTracingModule;
 
 import java.net.URI;
 
-public class ITTracingFeature_Server extends ITHttpServer {
+public class ITServerTracingModule extends ITHttpServer {
   private EmbeddedApp app;
   @Override
   protected void init() throws Exception {
