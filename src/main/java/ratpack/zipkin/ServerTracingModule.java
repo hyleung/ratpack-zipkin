@@ -23,7 +23,6 @@ import brave.http.HttpClientParser;
 import brave.http.HttpSampler;
 import brave.http.HttpServerParser;
 import brave.http.HttpTracing;
-import brave.internal.Platform;
 import brave.propagation.B3Propagation;
 import brave.propagation.Propagation;
 import brave.sampler.Sampler;
@@ -90,9 +89,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     Tracing tracing = Tracing.newBuilder()
                              .sampler(config.sampler)
                              .currentTraceContext(new RatpackCurrentTraceContext())
-                             .localEndpoint(buildLocalEndpoint(config.serviceName, serverConfig.getPort(),
+                             .endpoint(buildEndpoint(config.serviceName, serverConfig.getPort(),
                                  serverConfig.getAddress()))
-                             .localServiceName(config.serviceName)
                              .spanReporter(config.spanReporter)
                              .propagationFactory(config.propagationFactory)
                              .build();
@@ -104,10 +102,11 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
                       .build();
   }
 
-  private static Endpoint buildLocalEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
+  private static Endpoint buildEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
     Endpoint.Builder builder = Endpoint.newBuilder();
     if (!builder.parseIp(configAddress)) {
-      builder = Platform.get().localEndpoint().toBuilder();
+      // TODO: shade brave.internal.Platform
+      builder = brave.internal.Platform.get().endpoint().toBuilder();
     }
     return builder.serviceName(serviceName).port(port).build();
   }
@@ -168,7 +167,8 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       }
       this.spanReporter = new Reporter<zipkin2.Span>() {
         @Override public void report(zipkin2.Span span) {
-          reporter.report(zipkin.internal.V2SpanConverter.toSpan(span));
+          // TODO: shade brave.internal.V2SpanConverter
+          reporter.report(brave.internal.V2SpanConverter.toSpan(span));
         }
 
         @Override public String toString() {
