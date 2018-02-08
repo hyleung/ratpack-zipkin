@@ -3,6 +3,7 @@ package brave.http;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import ratpack.guice.Guice;
+import ratpack.http.Status;
 import ratpack.test.embed.EmbeddedApp;
 import ratpack.zipkin.ServerTracingModule;
 
@@ -26,6 +27,7 @@ public class ITServerTracingModule extends ITHttpServer {
                         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
                         ctx.getResponse().send("happy");
                       })
+                      .get("/extra", ctx -> ctx.getResponse().send("joey"))
                       .all(ctx -> ctx.getResponse().status(500).send()))
         );
   }
