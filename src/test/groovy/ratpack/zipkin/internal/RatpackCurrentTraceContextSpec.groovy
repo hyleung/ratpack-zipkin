@@ -14,6 +14,14 @@ class RatpackCurrentTraceContextSpec extends Specification {
         traceContext = new RatpackCurrentTraceContext({ -> registry})
     }
 
+    def dummyContext() {
+        TraceContext
+            .newBuilder()
+            .traceId(new Random().nextLong())
+            .spanId(new Random().nextLong())
+            .build()
+    }
+
     def 'Initial context should be null'() {
         given:
             def current = traceContext.get()
@@ -23,7 +31,7 @@ class RatpackCurrentTraceContextSpec extends Specification {
 
     def 'When setting TraceContext span, should return same TraceContext'() {
         given:
-            def expected = Stub(TraceContext)
+            def expected = dummyContext()
         and:
             traceContext.newScope(expected)
         when:
@@ -34,11 +42,11 @@ class RatpackCurrentTraceContextSpec extends Specification {
 
     def 'When closing a scope, trace context should revert back to previous'() {
         given:
-            traceContext.newScope(Stub(TraceContext))
-            def expected = Stub(TraceContext)
+            traceContext.newScope(dummyContext())
+            def expected = dummyContext()
             traceContext.newScope(expected)
         and:
-            def scope = traceContext.newScope(Stub(TraceContext))
+            def scope = traceContext.newScope(dummyContext())
         when:
             scope.close()
             def traceContext = traceContext.get()
@@ -49,9 +57,9 @@ class RatpackCurrentTraceContextSpec extends Specification {
 
     def 'When closing a scope, trace context should revert back to previous until null'() {
         given:
-            def scope_1 = traceContext.newScope(Stub(TraceContext))
-            def scope_2 = traceContext.newScope(Stub(TraceContext))
-            def scope_3 = traceContext.newScope(Stub(TraceContext))
+            def scope_1 = traceContext.newScope(dummyContext())
+            def scope_2 = traceContext.newScope(dummyContext())
+            def scope_3 = traceContext.newScope(dummyContext())
         when:
             scope_3.close()
             scope_2.close()
@@ -63,7 +71,7 @@ class RatpackCurrentTraceContextSpec extends Specification {
 
     def 'When TraceContext is null the context should be cleared'() {
         given:
-            def expected = Stub(TraceContext)
+            def expected = dummyContext()
         and:
             traceContext.newScope(expected)
         when:
