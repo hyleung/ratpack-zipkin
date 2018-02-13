@@ -15,7 +15,7 @@ import ratpack.util.Exceptions;
 import ratpack.zipkin.internal.RatpackCurrentTraceContext;
 import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 
-public class ITTracingFeature_Client extends ITHttpClient<HttpClient> {
+public class ITTracingFeature_Client extends ITHttpAsyncClient<HttpClient> {
 
     private static ExecHarness harness;
 
@@ -65,9 +65,9 @@ public class ITTracingFeature_Client extends ITHttpClient<HttpClient> {
         harness.yield(e -> client.get(URI.create(url(pathIncludingQuery)))).getValueOrThrow();
     }
 
-    @Test
-    @Override public void reportsServerAddress() throws Exception {
-        // current implementation doesn't parse the server address
+    @Override @Test(expected = AssertionError.class)
+    public void reportsServerAddress() throws Exception { // doesn't know the remote address
+        super.reportsServerAddress();
     }
 
     @Test
@@ -91,6 +91,22 @@ public class ITTracingFeature_Client extends ITHttpClient<HttpClient> {
         harness.run( e -> {
             harnessSetup(e);
             super.usesParentFromInvocationTime();
+        });
+    }
+
+    @Test
+    @Override public void propagatesExtra_unsampledTrace() throws Exception {
+        harness.run( e -> {
+            harnessSetup(e);
+            super.propagatesExtra_unsampledTrace();
+        });
+    }
+
+    @Test
+    @Override public void propagatesExtra_newTrace() throws Exception {
+        harness.run( e -> {
+            harnessSetup(e);
+            super.propagatesExtra_newTrace();
         });
     }
 }
