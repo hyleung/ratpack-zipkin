@@ -291,17 +291,17 @@ tracer.finishSpan();
 
 Currently nested local spans don't work in v1, but are supported in v2.
 
-#### Default KeyValueAnnotations
+#### Default Tags
 
 For server requests, we record the following annotations:
-- [TraceKeys.HTTP_PATH](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_PATH)
 - [TraceKeys.HTTP_METHOD](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_METHOD)
+- [TraceKeys.HTTP_PATH](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_PATH)
 
 For server responses, we record the following:
 - [TraceKeys.HTTP_STATUS_CODE](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_STATUS_CODE) for all **non-2xx** responses
 
 For client requests, we record the following:
-- [TraceKeys.HTTP_HOST](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_HOST)
+- [TraceKeys.HTTP_METHOD](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_METHOD)
 - [TraceKeys.HTTP_PATH](http://zipkin.io/zipkin/1.20.1/zipkin/zipkin/TraceKeys.html#HTTP_PATH)
 
 For client responses, we record the following:

@@ -546,7 +546,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
             assertThat(reporter.getSpans()).isNotEmpty()
             def span = reporter.getSpans().first()
-            assertThat(span.name()).isEqualTo("say/:message")
+            assertThat(span.name()).isEqualTo("get /say/:message")
 	}
 
 	def 'Should allow configuration of PropagationFactory'() {

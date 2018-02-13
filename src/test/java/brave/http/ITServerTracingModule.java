@@ -21,6 +21,7 @@ public class ITServerTracingModule extends ITHttpServer {
         .of(server ->
             server.registry(Guice.registry(binding -> binding.module(tracingModule)))
                   .handlers(chain -> chain
+                      .options("/", ctx -> ctx.getResponse().send(""))
                       .get("/foo", ctx -> ctx.getResponse().send("bar"))
                       .get("/async", ctx ->
                           Promise.async(f -> f.success("bar")).then(ctx::render)
@@ -31,6 +32,12 @@ public class ITServerTracingModule extends ITHttpServer {
                         httpTracing.tracing().tracer().nextSpan().name("child").start().finish();
                         ctx.getResponse().send("happy");
                       })
+                      .get("/items/:itemId", ctx ->
+                          ctx.getResponse().send(ctx.getPathTokens().get("itemId"))
+                      )
+                      .prefix("/nested", nested -> nested.get("items/:itemId", ctx ->
+                          ctx.getResponse().send(ctx.getPathTokens().get("itemId"))
+                      ))
                       .get("/extra", ctx -> ctx.getResponse().send("joey"))
                       .get("/exception", ctx -> {
                         throw new IOException();

@@ -1,6 +1,7 @@
 package ratpack.zipkin.internal;
 
 import com.google.common.net.HttpHeaders;
+import ratpack.path.PathBinding;
 import ratpack.zipkin.ServerRequest;
 import ratpack.zipkin.ServerResponse;
 import zipkin2.Endpoint;
@@ -25,7 +26,9 @@ final class ServerHttpAdapter extends brave.http.HttpServerAdapter<ServerRequest
   }
 
   @Override public String path(ServerRequest request) {
-    return request.getPath();
+    // docs say request.getPath() is without a leading slash, but it isn't guaranteed.
+    String result = request.getPath();
+    return result.indexOf('/') == 0 ? result : "/" + result;
   }
 
   @Override public String url(ServerRequest request) {
@@ -34,6 +37,16 @@ final class ServerHttpAdapter extends brave.http.HttpServerAdapter<ServerRequest
 
   @Override public String requestHeader(ServerRequest request, String name) {
     return request.getHeaders().get(name);
+  }
+
+  @Override public String methodFromResponse(ServerResponse response) {
+    return response.getRequest().getMethod().getName();
+  }
+
+  @Override public String route(ServerResponse response) {
+    String result = response.pathBinding().map(PathBinding::getDescription).orElse("");
+    if (result.isEmpty()) return result;
+    return result.indexOf('/') == 0 ? result : "/" + result;
   }
 
   @Override public Integer statusCode(ServerResponse response) {

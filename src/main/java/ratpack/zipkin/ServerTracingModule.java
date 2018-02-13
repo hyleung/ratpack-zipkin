@@ -122,9 +122,7 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
     private HttpSampler clientSampler = HttpSampler.TRACE_ID;
 
     private HttpClientParser clientParser = new HttpClientParser();
-
-    private SpanNameProvider defaultSpanNameProvider = (req, pathBinding) -> req.getMethod().getName();
-    private HttpServerParser serverParser = new RatpackHttpServerParser(defaultSpanNameProvider);
+    private HttpServerParser serverParser = new HttpServerParser();
     private Propagation.Factory propagationFactory = B3Propagation.FACTORY;
 
     /**
