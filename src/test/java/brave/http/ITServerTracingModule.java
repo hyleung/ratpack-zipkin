@@ -2,11 +2,12 @@ package brave.http;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
+import ratpack.exec.Promise;
 import ratpack.guice.Guice;
-import ratpack.http.Status;
 import ratpack.test.embed.EmbeddedApp;
 import ratpack.zipkin.ServerTracingModule;
 
+import java.io.IOException;
 import java.net.URI;
 
 public class ITServerTracingModule extends ITHttpServer {
@@ -21,6 +22,9 @@ public class ITServerTracingModule extends ITHttpServer {
             server.registry(Guice.registry(binding -> binding.module(tracingModule)))
                   .handlers(chain -> chain
                       .get("/foo", ctx -> ctx.getResponse().send("bar"))
+                      .get("/async", ctx ->
+                          Promise.async(f -> f.success("bar")).then(ctx::render)
+                      )
                       .get("/badrequest", ctx -> ctx.getResponse().status(400).send())
                       .get("/child", ctx -> {
                         HttpTracing httpTracing = ctx.get(HttpTracing.class);
@@ -28,7 +32,13 @@ public class ITServerTracingModule extends ITHttpServer {
                         ctx.getResponse().send("happy");
                       })
                       .get("/extra", ctx -> ctx.getResponse().send("joey"))
-                      .all(ctx -> ctx.getResponse().status(500).send()))
+                      .get("/exception", ctx -> {
+                        throw new IOException();
+                      })
+                      .get("/exceptionAsync",
+                          ctx -> Promise.async((f) -> f.error(new IOException())).then(ctx::render)
+                      )
+                      .all(ctx -> ctx.getResponse().status(404).send()))
         );
   }
 
