@@ -16,14 +16,20 @@
 package ratpack.zipkin.internal;
 
 import brave.Span;
+import brave.http.HttpClientAdapter;
 import brave.http.HttpClientHandler;
+import brave.http.HttpSampler;
 import brave.http.HttpTracing;
+import brave.propagation.CurrentTraceContext;
+import brave.propagation.SamplingFlags;
+import brave.propagation.ThreadLocalSpan;
 import brave.propagation.TraceContext;
+import brave.propagation.TraceContextOrSamplingFlags;
 import io.netty.buffer.ByteBufAllocator;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
 import javax.inject.Inject;
 import javax.net.ssl.SSLContext;
 import ratpack.exec.Promise;
@@ -43,13 +49,19 @@ import ratpack.http.client.StreamedResponse;
 public final class ZipkinHttpClientImpl implements HttpClient {
 
     private final HttpClient delegate;
+    private final CurrentTraceContext currentTraceContext;
+    private final ThreadLocalSpan span;
+    private final BiFunction<WrappedRequestSpec, TraceContext, Span> nextSpan;
     private final HttpClientHandler<WrappedRequestSpec, Integer> handler;
     private final TraceContext.Injector<MutableHeaders> injector;
 
     @Inject
     public ZipkinHttpClientImpl(final HttpClient delegate, final HttpTracing httpTracing) {
         this.delegate = delegate;
-        this.handler = HttpClientHandler.create(httpTracing, new HttpAdapter());
+        this.span = ThreadLocalSpan.create(httpTracing.tracing().tracer());
+        this.currentTraceContext = httpTracing.tracing().currentTraceContext();
+        this.nextSpan = new NextSpan(span, httpTracing.clientSampler());
+        this.handler = HttpClientHandler.create(httpTracing, ADAPTER);
         this.injector = httpTracing.tracing().propagation().injector(MutableHeaders::set);
     }
 
@@ -80,23 +92,25 @@ public final class ZipkinHttpClientImpl implements HttpClient {
 
     @Override
     public Promise<ReceivedResponse> request(URI uri, Action<? super RequestSpec> action) {
-        final AtomicReference<Span> span = new AtomicReference<>();
-
+        // save off the current span as the parent of a future client span
+        TraceContext parent = currentTraceContext.get();
         return delegate
-            .request(uri, (RequestSpec requestSpec) -> action.execute(new WrappedRequestSpec(handler, injector, requestSpec, span)))
+            .request(uri, (RequestSpec requestSpec) -> action.execute(new WrappedRequestSpec(parent, nextSpan, handler, injector, requestSpec, span)))
             .wiretap(response -> responseWithSpan(response, span));
     }
 
     @Override
     public Promise<StreamedResponse> requestStream(URI uri, Action<? super RequestSpec> action) {
-        final AtomicReference<Span> span = new AtomicReference<>();
-
+        // save off the current span as the parent of a future client span
+        TraceContext parent = currentTraceContext.get();
         return delegate
             .requestStream(uri, (RequestSpec requestSpec) -> {
-                WrappedRequestSpec captor = new WrappedRequestSpec(handler, injector, requestSpec, span);
+                WrappedRequestSpec captor =
+                    new WrappedRequestSpec(parent, nextSpan, handler, injector, requestSpec, span);
                 // streamed request doesn't set the http method.
                 // start span here until a better solution presents itself.
-                span.set(handler.handleSend(injector, captor.getHeaders(), captor));
+                Span currentSpan = nextSpan.apply(captor, parent);
+                handler.handleSend(injector, captor.getHeaders(), captor, currentSpan);
                 action.execute(captor);
             })
             .wiretap(response -> streamedResponseWithSpan(response, span));
@@ -112,28 +126,28 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         return request(uri, requestConfigurer.prepend(RequestSpec::post));
     }
 
-    private void streamedResponseWithSpan(Result<StreamedResponse> response, AtomicReference<Span> ref) {
-        Span span = ref.get();
-        if (span == null) return;
+    private void streamedResponseWithSpan(Result<StreamedResponse> response, ThreadLocalSpan span) {
+        Span currentSpan = span.remove();
+        if (currentSpan == null) return;
 
         Integer statusCode = (response.isError() || response.getValue() == null)
             ? null : response.getValue().getStatusCode();
 
-        handler.handleReceive(statusCode, response.getThrowable(), span);
+        handler.handleReceive(statusCode, response.getThrowable(), currentSpan);
     }
 
-    private void responseWithSpan(Result<ReceivedResponse> response, AtomicReference<Span> ref) {
-        Span span = ref.get();
-        if (span == null) return;
+    private void responseWithSpan(Result<ReceivedResponse> response, ThreadLocalSpan span) {
+        Span currentSpan = span.remove();
+        if (currentSpan == null) return;
 
         Integer statusCode = (response.isError() || response.getValue() == null)
             ? null : response.getValue().getStatusCode();
 
-        handler.handleReceive(statusCode, response.getThrowable(), span);
+        handler.handleReceive(statusCode, response.getThrowable(), currentSpan);
     }
 
-    static final class HttpAdapter
-        extends brave.http.HttpClientAdapter<WrappedRequestSpec, Integer> {
+    static final HttpClientAdapter<WrappedRequestSpec, Integer> ADAPTER =
+        new HttpClientAdapter<WrappedRequestSpec, Integer>() {
 
         @Override public String method(WrappedRequestSpec request) {
             HttpMethod method = Optional.ofNullable(request.getCapturedMethod()).orElse(HttpMethod.GET);
@@ -155,7 +169,7 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         @Override public Integer statusCode(Integer response) {
             return response;
         }
-    }
+    };
 
     /**
      * RequestSpec wrapper that captures the method type, sets up redirect handling
@@ -163,14 +177,23 @@ public final class ZipkinHttpClientImpl implements HttpClient {
      */
     static final class WrappedRequestSpec implements RequestSpec {
 
+        private final TraceContext parent;
+        private final BiFunction<WrappedRequestSpec, TraceContext, Span> nextSpan;
         private final RequestSpec delegate;
-        private final AtomicReference<Span> span;
+        private final ThreadLocalSpan span;
         private final HttpClientHandler<WrappedRequestSpec, Integer> handler;
         private final TraceContext.Injector<MutableHeaders> injector;
         private HttpMethod capturedMethod;
 
-        WrappedRequestSpec(HttpClientHandler<WrappedRequestSpec, Integer> handler,
-            TraceContext.Injector<MutableHeaders> injector, RequestSpec spec,  AtomicReference<Span> span) {
+        WrappedRequestSpec(
+            TraceContext parent,
+            BiFunction<WrappedRequestSpec, TraceContext, Span> nextSpan,
+            HttpClientHandler<WrappedRequestSpec, Integer> handler,
+            TraceContext.Injector<MutableHeaders> injector, RequestSpec spec,
+            ThreadLocalSpan span
+        ) {
+            this.parent = parent;
+            this.nextSpan = nextSpan;
             this.delegate = spec;
             this.span = span;
             this.handler = handler;
@@ -186,8 +209,9 @@ public final class ZipkinHttpClientImpl implements HttpClient {
          * @return
          */
         private Action<? super RequestSpec> redirectHandler(ReceivedResponse response) {
-            handler.handleReceive(response.getStatusCode(), null, span.get());
-            return (s) -> new WrappedRequestSpec(handler, injector, s, span);
+            Span currentSpan = span.remove();
+            handler.handleReceive(response.getStatusCode(), null, currentSpan);
+            return (s) -> new WrappedRequestSpec(parent, nextSpan, handler, injector, s, span);
         }
 
         @Override
@@ -232,7 +256,8 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         @Override
         public RequestSpec method(HttpMethod method) {
             this.capturedMethod = method;
-            span.set(handler.handleSend(injector, this.getHeaders(), this));
+            Span currentSpan = nextSpan.apply(this, parent);
+            handler.handleSend(injector, this.getHeaders(), this, currentSpan);
             this.delegate.method(method);
             return this;
         }
@@ -274,6 +299,24 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         public HttpMethod getCapturedMethod() {
             return capturedMethod;
         }
+    }
 
+    /** This is a partial function that applies the last parent when creating a new span */
+    static class NextSpan implements BiFunction<WrappedRequestSpec, TraceContext, Span> {
+        final ThreadLocalSpan span;
+        final HttpSampler sampler;
+
+        NextSpan(ThreadLocalSpan span, HttpSampler sampler) {
+            this.span = span;
+            this.sampler = sampler;
+        }
+
+        @Override public Span apply(WrappedRequestSpec req, TraceContext parent) {
+            if (parent != null) return span.next(TraceContextOrSamplingFlags.create(parent));
+            Boolean sampled = sampler.trySample(ADAPTER, req);
+            return span.next(TraceContextOrSamplingFlags.create(
+                new SamplingFlags.Builder().sampled(sampled).build())
+            );
+        }
     }
 }

@@ -9,8 +9,6 @@ import brave.propagation.TraceContext;
 import javax.inject.Inject;
 
 import com.google.common.net.HostAndPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import ratpack.handling.Context;
 import ratpack.handling.Handler;
 import ratpack.http.Headers;
@@ -20,7 +18,6 @@ import ratpack.http.Response;
 import ratpack.http.Status;
 import ratpack.path.PathBinding;
 import ratpack.server.PublicAddress;
-import ratpack.server.ServerConfig;
 import ratpack.zipkin.ServerRequest;
 import ratpack.zipkin.ServerResponse;
 import ratpack.zipkin.ServerTracingHandler;
@@ -35,7 +32,7 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
   private final Tracing tracing;
   private final HttpServerHandler<ServerRequest, ServerResponse> handler;
   private final TraceContext.Extractor<ServerRequest> extractor;
-  private final Logger logger = LoggerFactory.getLogger(DefaultServerTracingHandler.class);
+
   @Inject
   public DefaultServerTracingHandler(final HttpTracing httpTracing) {
     this.tracing = httpTracing.tracing();
@@ -48,15 +45,15 @@ public final class DefaultServerTracingHandler implements ServerTracingHandler {
     ServerRequest request = new ServerRequestImpl(ctx.getRequest());
     final Span span = handler.handleReceive(extractor, request);
 
-    //place the Span in scope so that downstream code (e.g. Ratpack handlers
-    //further on in the chain) can see the Span.
-    final Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span);
     ctx.getResponse().beforeSend(response -> {
       ServerResponse serverResponse = new ServerResponseImpl(response, request, ctx.getPathBinding());
       handler.handleSend(serverResponse, null, span);
-      scope.close();
     });
-    ctx.next();
+    //place the Span in scope so that downstream code (e.g. Ratpack handlers
+    //further on in the chain) can see the Span.
+    try (Tracer.SpanInScope scope = tracing.tracer().withSpanInScope(span)) {
+      ctx.next();
+    }
   }
 
   private static class ServerRequestImpl implements ServerRequest {
