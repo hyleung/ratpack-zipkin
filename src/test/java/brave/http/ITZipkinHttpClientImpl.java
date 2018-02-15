@@ -15,7 +15,7 @@ import ratpack.util.Exceptions;
 import ratpack.zipkin.internal.RatpackCurrentTraceContext;
 import ratpack.zipkin.internal.ZipkinHttpClientImpl;
 
-public class ITTracingFeature_Client extends ITHttpAsyncClient<HttpClient> {
+public class ITZipkinHttpClientImpl extends ITHttpAsyncClient<HttpClient> {
 
     private static ExecHarness harness;
 
@@ -62,7 +62,8 @@ public class ITTracingFeature_Client extends ITHttpAsyncClient<HttpClient> {
 
     @Override protected void getAsync(HttpClient client, String pathIncludingQuery)
         throws Exception {
-        harness.yield(e -> client.get(URI.create(url(pathIncludingQuery)))).getValueOrThrow();
+        harness.yield(e -> client.requestStream(URI.create(url(pathIncludingQuery)), r -> {
+        })).getValueOrThrow();
     }
 
     @Override @Test(expected = AssertionError.class)
