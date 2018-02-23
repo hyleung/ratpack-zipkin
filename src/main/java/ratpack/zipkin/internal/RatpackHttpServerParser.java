@@ -15,6 +15,7 @@ public class RatpackHttpServerParser extends HttpServerParser {
   public RatpackHttpServerParser(final SpanNameProvider spanNameProvider) {
     this.spanNameProvider = spanNameProvider;
   }
+
   @Override
   public <Req> void request(final HttpAdapter<Req, ?> adapter, final Req req, final SpanCustomizer customizer) {
     super.request(adapter, req, customizer);

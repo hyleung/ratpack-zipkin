@@ -109,7 +109,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			request.headers.values("X-TEST").size() == 1
 	}
 
-	def "Request returning 2xx include HTTP_PATH annotation (but *not* status code)"(HttpResponseStatus status) {
+	def "Request returning 2xx includes HTTP_METHOD and HTTP_PATH tags (but *not* status code)"(HttpResponseStatus status) {
 		given:
 			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
 		when:
@@ -119,8 +119,8 @@ class ZipkinHttpClientImplSpec extends Specification {
 			}.value
 		then:
 			Span span = reporter.spans.get(0)
-		and: "should contain path tag but not status code tag"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_PATH)
+		and: "should contain method and path tag but not status code tag"
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH)
 		where:
 			status | _
 			HttpResponseStatus.OK | _
@@ -132,7 +132,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			HttpResponseStatus.PARTIAL_CONTENT | _
 	}
 
-	def "Request returning 4xx include HTTP_PATH and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
+	def "Request returning 4xx includes HTTP_METHOD, HTTP_PATH and HTTP_STATUS_CODE tags"(HttpResponseStatus status) {
 		given:
 			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
 		when:
@@ -143,7 +143,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			Span span = reporter.spans.get(0)
 		and: "should contain http status code, path and error tags"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_STATUS_CODE, TraceKeys.HTTP_PATH, "error")
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH, TraceKeys.HTTP_STATUS_CODE, "error")
 		where:
 			status | _
 			HttpResponseStatus.BAD_REQUEST | _
@@ -159,7 +159,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 			HttpResponseStatus.GONE | _
 	}
 
-	def "Request returning 5xx include HTTP_PATH and HTTP_STATUS_CODE annotations"(HttpResponseStatus status) {
+	def "Request returning 5xx includes HTTP_METHOD, HTTP_PATH and HTTP_STATUS_CODE tags"(HttpResponseStatus status) {
 		given:
 			webServer.enqueue(new MockResponse().setResponseCode(status.code()))
 		when:
@@ -170,7 +170,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			Span span = reporter.spans.get(0)
 		and: "should contain status, path and error tags"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_STATUS_CODE, TraceKeys.HTTP_PATH, "error")
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH, TraceKeys.HTTP_STATUS_CODE, "error")
 		where:
 			status | _
 			HttpResponseStatus.INTERNAL_SERVER_ERROR | _
@@ -193,7 +193,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			response.getStatusCode() == 200
 			Span span = reporter.spans.get(0)
-		and: "should contain path tag but not status code tag"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_PATH)
+		and: "should contain method and path tags, but not status code tag"
+			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH)
 	}
 }
