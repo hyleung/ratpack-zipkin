@@ -1,5 +1,6 @@
 package brave.http;
 
+import brave.test.http.ITHttpServer;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import ratpack.exec.Promise;

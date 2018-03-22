@@ -35,24 +35,26 @@ repositories {
 }
 
 dependencies {
-    compile "io.ratpack:ratpack-guice:${ratpackVersion}"
-    compile 'org.slf4j:slf4j-api:1.7.13'
-    compile "io.zipkin.brave:brave:${braveVersion}"
-    compile "io.zipkin.brave:brave-instrumentation-http:${braveVersion}"
+    implementation "io.zipkin.brave:brave-bom:4.18.2"
+
+    implementation "io.ratpack:ratpack-guice:${ratpackVersion}"
+    implementation 'org.slf4j:slf4j-api:1.7.13'
+    implementation "io.zipkin.brave:brave"
+    implementation "io.zipkin.brave:brave-instrumentation-http"
     // compile vs compileOnly for access to all overloaded parameters on Config.spanReporter
     compileOnly 'io.zipkin.reporter:zipkin-reporter:1.1.2'
-    testCompile 'io.zipkin.reporter:zipkin-reporter:1.1.2'
-    testCompile 'junit:junit:4.12'
-    testCompile 'org.assertj:assertj-core:3.4.1'
-    testCompile 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
-    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
-    testCompile 'cglib:cglib-nodep:3.2.1'
-    testCompile 'org.objenesis:objenesis:2.2'
-    testCompile 'com.nagternal:spock-genesis:0.4.0'
-    testCompile 'org.slf4j:slf4j-nop:1.7.21'
-    testCompile 'io.ratpack:ratpack-groovy-test:1.4.1'
-    testCompile "io.zipkin.brave:brave-instrumentation-http-tests:${braveVersion}"
-    testCompile 'com.squareup.okhttp3:mockwebserver:3.9.1'
+    testImplementation 'io.zipkin.reporter:zipkin-reporter'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.assertj:assertj-core:3.4.1'
+    testImplementation 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
+    testImplementation 'org.spockframework:spock-core:1.0-groovy-2.4'
+    testImplementation 'cglib:cglib-nodep:3.2.1'
+    testImplementation 'org.objenesis:objenesis:2.2'
+    testImplementation 'com.nagternal:spock-genesis:0.4.0'
+    testImplementation 'org.slf4j:slf4j-nop:1.7.21'
+    testImplementation 'io.ratpack:ratpack-groovy-test:1.4.1'
+    testImplementation "io.zipkin.brave:brave-instrumentation-http-tests"
+    testImplementation 'com.squareup.okhttp3:mockwebserver:3.9.1'
 }
 
 //Artifacts

@@ -1,6 +1,7 @@
 package brave.http;
 
 import brave.sampler.Sampler;
+import brave.test.http.ITHttpAsyncClient;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import java.io.IOException;
 import java.net.URI;
