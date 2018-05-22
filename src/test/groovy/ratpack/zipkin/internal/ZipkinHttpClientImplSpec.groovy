@@ -21,7 +21,6 @@ import spock.lang.AutoCleanup
 import spock.lang.Specification
 import spock.lang.Unroll
 import zipkin2.Span
-import zipkin.TraceKeys
 
 import static org.assertj.core.api.Assertions.assertThat
 
@@ -120,7 +119,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			Span span = reporter.spans.get(0)
 		and: "should contain method and path tag but not status code tag"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH)
+			assertThat(span.tags()).containsOnlyKeys("http.method", "http.path")
 		where:
 			status | _
 			HttpResponseStatus.OK | _
@@ -143,7 +142,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			Span span = reporter.spans.get(0)
 		and: "should contain http status code, path and error tags"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH, TraceKeys.HTTP_STATUS_CODE, "error")
+			assertThat(span.tags()).containsOnlyKeys("http.method", "http.path", "http.status_code", "error")
 		where:
 			status | _
 			HttpResponseStatus.BAD_REQUEST | _
@@ -170,7 +169,7 @@ class ZipkinHttpClientImplSpec extends Specification {
 		then:
 			Span span = reporter.spans.get(0)
 		and: "should contain status, path and error tags"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH, TraceKeys.HTTP_STATUS_CODE, "error")
+			assertThat(span.tags()).containsOnlyKeys("http.method", "http.path", "http.status_code", "error")
 		where:
 			status | _
 			HttpResponseStatus.INTERNAL_SERVER_ERROR | _
@@ -194,6 +193,6 @@ class ZipkinHttpClientImplSpec extends Specification {
 			response.getStatusCode() == 200
 			Span span = reporter.spans.get(0)
 		and: "should contain method and path tags, but not status code tag"
-			assertThat(span.tags()).containsOnlyKeys(TraceKeys.HTTP_METHOD, TraceKeys.HTTP_PATH)
+			assertThat(span.tags()).containsOnlyKeys("http.method", "http.path")
 	}
 }

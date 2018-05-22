@@ -150,32 +150,6 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
       return this;
     }
 
-
-    /** @deprecated please use {@link #spanReporterV2(Reporter)}}
-     *
-     * @param reporter a V1 reporter
-     *
-     * @return the config
-     * */
-    @Deprecated
-    public Config spanReporter(final zipkin.reporter.Reporter<zipkin.Span> reporter) {
-      if (reporter == zipkin.reporter.Reporter.NOOP) {
-        this.spanReporter = Reporter.NOOP;
-        return this;
-      }
-      this.spanReporter = new Reporter<zipkin2.Span>() {
-        @Override public void report(zipkin2.Span span) {
-          // TODO: shade brave.internal.V2SpanConverter
-          reporter.report(brave.internal.V2SpanConverter.toSpan(span));
-        }
-
-        @Override public String toString() {
-          return reporter.toString();
-        }
-      };
-      return this;
-    }
-
     /**
      * Set the sampler.
      *

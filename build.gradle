@@ -35,15 +35,12 @@ repositories {
 }
 
 dependencies {
-    implementation "io.zipkin.brave:brave-bom:4.18.2"
+    implementation "io.zipkin.brave:brave-bom:5.1.5"
 
     implementation "io.ratpack:ratpack-guice:${ratpackVersion}"
     implementation 'org.slf4j:slf4j-api:1.7.13'
     implementation "io.zipkin.brave:brave"
     implementation "io.zipkin.brave:brave-instrumentation-http"
-    // compile vs compileOnly for access to all overloaded parameters on Config.spanReporter
-    compileOnly 'io.zipkin.reporter:zipkin-reporter:1.1.2'
-    testImplementation 'io.zipkin.reporter:zipkin-reporter'
     testImplementation 'junit:junit:4.12'
     testImplementation 'org.assertj:assertj-core:3.4.1'
     testImplementation 'org.codehaus.groovy:groovy-all:2.4.6' // required for coverage
@@ -54,7 +51,7 @@ dependencies {
     testImplementation 'org.slf4j:slf4j-nop:1.7.21'
     testImplementation 'io.ratpack:ratpack-groovy-test:1.4.1'
     testImplementation "io.zipkin.brave:brave-instrumentation-http-tests"
-    testImplementation 'com.squareup.okhttp3:mockwebserver:3.9.1'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:3.11.0'
 }
 
 //Artifacts

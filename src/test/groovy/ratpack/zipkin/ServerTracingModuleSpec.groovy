@@ -3,7 +3,6 @@ package ratpack.zipkin
 import brave.SpanCustomizer
 import brave.http.HttpSampler
 import brave.propagation.B3Propagation
-import brave.propagation.Propagation
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import ratpack.handling.Context
@@ -13,8 +12,6 @@ import ratpack.zipkin.internal.ZipkinHttpClientImpl
 import ratpack.zipkin.support.B3PropagationHeaders
 import spock.lang.Unroll
 import zipkin2.reporter.Reporter
-
-import java.util.concurrent.ConcurrentLinkedDeque
 
 import static org.assertj.core.api.Assertions.*
 
@@ -26,8 +23,6 @@ import ratpack.http.HttpMethod
 import ratpack.zipkin.support.TestReporter
 import spock.lang.Specification
 import zipkin2.Span
-import zipkin.Constants
-import zipkin.TraceKeys
 
 class ServerTracingModuleSpec extends Specification {
 
@@ -96,43 +91,6 @@ class ServerTracingModuleSpec extends Specification {
 		expect:
 			app.test { t -> t.get() }
 	}
-
-	def 'Should collect server spans with deprecated Reporter'() {
-		given:
-			def spans = new ConcurrentLinkedDeque<>()
-			def reporter = new zipkin.reporter.Reporter<zipkin.Span>(){
-				@Override
-				void report(zipkin.Span span) {
-					spans.add(span)
-				}
-			}
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
-						config
-										.serviceName("embedded")
-										.sampler(Sampler.create(1f))
-										.spanReporter(reporter)
-					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
-				}
-			}
-		when:
-			app.test { t -> t.get() }
-		then:
-			spans.size() == 1
-			zipkin.Span span = spans.first
-		and: "should contain SS annotation"
-			span.annotations.findAll { it.value == Constants.SERVER_SEND }.size() == 1
-		and: "should contain SR annotation"
-			span.annotations.findAll { it.value == Constants.SERVER_RECV }.size() == 1
-	}
-
-
 
 	def 'Should collect server spans with Reporter'() {
 		given:
@@ -262,7 +220,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "http.status_code" } != null
 		where:
 			status                                 | _
 			HttpResponseStatus.CONTINUE            | _
@@ -291,7 +249,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "http.status_code" } != null
 			span.tags().find { it -> it.key == "error" } == null
 		where:
 			status                                | _
@@ -327,7 +285,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "http.status_code" } != null
 			span.tags().find { it -> it.key == "error" } != null
 		where:
 			status                                           | _
@@ -366,7 +324,7 @@ class ServerTracingModuleSpec extends Specification {
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
-			span.tags().find { it -> it.key == TraceKeys.HTTP_STATUS_CODE } != null
+			span.tags().find { it -> it.key == "http.status_code" } != null
 			span.tags().find { it -> it.key == "error" } != null
 		where:
 			status                                        | _
