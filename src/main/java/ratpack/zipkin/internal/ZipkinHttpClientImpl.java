@@ -33,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import javax.inject.Inject;
 import javax.net.ssl.SSLContext;
+
+import io.netty.handler.ssl.SslContext;
 import ratpack.exec.Promise;
 import ratpack.exec.Result;
 import ratpack.func.Action;
@@ -82,8 +84,18 @@ public final class ZipkinHttpClientImpl implements HttpClient {
     }
 
     @Override
+    public Duration getConnectTimeout() {
+        return delegate.getConnectTimeout();
+    }
+
+    @Override
     public int getMaxContentLength() {
         return delegate.getMaxContentLength();
+    }
+
+    @Override
+    public int getMaxResponseChunkSize() {
+        return delegate.getMaxResponseChunkSize();
     }
 
     @Override
@@ -241,6 +253,12 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         }
 
         @Override
+        public RequestSpec sslContext(final SslContext sslContext) {
+            this.delegate.sslContext(sslContext);
+            return this;
+        }
+
+        @Override
         public MutableHeaders getHeaders() {
             return this.delegate.getHeaders();
         }
@@ -249,6 +267,11 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         public RequestSpec maxContentLength(int numBytes) {
             this.delegate.maxContentLength(numBytes);
             return this;
+        }
+
+        @Override
+        public RequestSpec responseMaxChunkSize(final int numBytes) {
+            return null;
         }
 
         @Override
