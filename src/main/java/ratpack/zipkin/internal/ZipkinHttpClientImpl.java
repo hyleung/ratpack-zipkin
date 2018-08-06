@@ -271,7 +271,8 @@ public final class ZipkinHttpClientImpl implements HttpClient {
 
         @Override
         public RequestSpec responseMaxChunkSize(final int numBytes) {
-            return null;
+            this.delegate.responseMaxChunkSize(numBytes);
+            return this;
         }
 
         @Override
