@@ -93,7 +93,7 @@ if is_pull_request; then
   true
 elif is_travis_branch_master; then
     # deploy the signed artifact
-    ./mvnw -s ./.settings.xml -Prelease -Dgpg.secretKeyring=travis/secring.gpg.enc -Dgpg.keyname=$SIGNING_KEY_ID -Dgpg.passphrase=$SIGNING_PASSWORD deploy
+    ./mvnw -s ./.settings.xml -Prelease -Dgpg.secretKeyring=travis/secring.gpg -Dgpg.publicKeyring=travis/pubring.gpg -Dgpg.defaultKeyring=false -Dgpg.keyname=$SIGNING_KEY_ID -Dgpg.passphrase=$SIGNING_PASSWORD deploy
 
 elif build_started_by_tag; then
     safe_checkout_master
