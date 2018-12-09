@@ -24,7 +24,7 @@ docker-compose up
 To build and install into your local environment:
 
 ```
-./gradlew clean install
+./mvnw clean install
 ```
 
 ## Snapshot Releases
