@@ -84,8 +84,18 @@ public final class ZipkinHttpClientImpl implements HttpClient {
     }
 
     @Override
+    public Duration getConnectTimeout() {
+        return delegate.getConnectTimeout();
+    }
+
+    @Override
     public int getMaxContentLength() {
         return delegate.getMaxContentLength();
+    }
+
+    @Override
+    public int getMaxResponseChunkSize() {
+        return delegate.getMaxResponseChunkSize();
     }
 
     @Override
@@ -243,6 +253,12 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         }
 
         @Override
+        public RequestSpec sslContext(final SslContext sslContext) {
+            this.delegate.sslContext(sslContext);
+            return this;
+        }
+
+        @Override
         public MutableHeaders getHeaders() {
             return this.delegate.getHeaders();
         }
@@ -250,6 +266,12 @@ public final class ZipkinHttpClientImpl implements HttpClient {
         @Override
         public RequestSpec maxContentLength(int numBytes) {
             this.delegate.maxContentLength(numBytes);
+            return this;
+        }
+
+        @Override
+        public RequestSpec responseMaxChunkSize(final int numBytes) {
+            this.delegate.responseMaxChunkSize(numBytes);
             return this;
         }
 

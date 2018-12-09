@@ -42,7 +42,7 @@
     <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
 
     <braveVersion>5.1.5</braveVersion>
-    <ratpackVersion>1.4.6</ratpackVersion>
+    <ratpackVersion>1.5.4</ratpackVersion>
 
   </properties>
 
