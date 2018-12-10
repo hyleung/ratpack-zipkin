@@ -3,26 +3,24 @@ package ratpack.zipkin
 import brave.SpanCustomizer
 import brave.http.HttpSampler
 import brave.propagation.B3Propagation
+import brave.sampler.Sampler
+import io.netty.handler.codec.http.HttpResponseStatus
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import ratpack.handling.Context
 import ratpack.handling.Handler
-import ratpack.path.PathBinding
-import ratpack.zipkin.internal.ZipkinHttpClientImpl
-import ratpack.zipkin.support.B3PropagationHeaders
-import spock.lang.Unroll
-import zipkin2.reporter.Reporter
-
-import static org.assertj.core.api.Assertions.*
-
-import brave.sampler.Sampler
-import io.netty.handler.codec.http.HttpResponseStatus
-import ratpack.groovy.test.embed.GroovyEmbeddedApp
-import ratpack.guice.Guice
 import ratpack.http.HttpMethod
+import ratpack.http.client.HttpClient
+import ratpack.path.PathBinding
+import ratpack.zipkin.support.B3PropagationHeaders
 import ratpack.zipkin.support.TestReporter
 import spock.lang.Specification
+import spock.lang.Unroll
 import zipkin2.Span
+import zipkin2.reporter.Reporter
+
+import static org.assertj.core.api.Assertions.assertThat
+import static ratpack.groovy.test.embed.GroovyEmbeddedApp.ratpack
 
 class ServerTracingModuleSpec extends Specification {
 
@@ -34,83 +32,67 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should initialize with default config'() {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class)
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule)
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
+
 				}
 			}
 		expect:
-			app.test { t -> t.get() }
+			app.test {
+				assert getText() == "foo"
+			}
 	}
 
 	def 'Should initialize with all the configs'() {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, {config ->
 						config
-								.serviceName("embedded")
-								.sampler(Sampler.create(1f))
-								.clientSampler(HttpSampler.TRACE_ID)
-								.serverSampler(HttpSampler.TRACE_ID)
-								.spanReporterV2(Reporter.NOOP)
+							.serviceName("embedded")
+							.sampler(Sampler.create(1f))
+							.clientSampler(HttpSampler.TRACE_ID)
+							.serverSampler(HttpSampler.TRACE_ID)
+							.spanReporterV2(Reporter.NOOP)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
 				}
 			}
 		expect:
-			app.test { t -> t.get() }
-	}
-
-	def 'Should initialize with legacy NOOP Reporter'() {
-		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
-						config
-								.serviceName("embedded")
-								.sampler(Sampler.create(1f))
-								.spanReporterV2(zipkin.reporter.Reporter.NOOP)
-					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
-				}
+			app.test {
+				assert getText() == "foo"
 			}
-		expect:
-			app.test { t -> t.get() }
 	}
 
 	def 'Should collect server spans with Reporter'() {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
 				}
 			}
 		when:
-			app.test { t -> t.get() }
+			app.test { assert getText() == "foo" }
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
@@ -121,24 +103,24 @@ class ServerTracingModuleSpec extends Specification {
 	@Unroll
 	def "Should collect spans with HTTP #method"(HttpMethod method) {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
 				}
 			}
 		when:
-			app.test { t ->
-				t.request { spec ->
+			app.test {
+				request { spec ->
 					spec.method(method)
 				}
 			}
@@ -159,24 +141,24 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should join trace if B3 propagation headers present'() {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
 				}
 			}
 		when:
-			app.test { t ->
-				t.request { spec ->
+			app.test {
+				request { spec ->
 					spec.get()
 						.headers { headers ->
 							headers
@@ -197,26 +179,25 @@ class ServerTracingModuleSpec extends Specification {
 			span.kind() == Span.Kind.SERVER
 	}
 
-
 	def 'Should report span with http status code tag for 1xx (#status) responses'(HttpResponseStatus status) {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.response.status(status.code()).send()
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.response.status(status.code()).send()
+					}
 				}
 			}
 		when:
-			app.test { t -> t.get() }
+			app.test { assert getText() == "" }
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
@@ -229,23 +210,23 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should report span with http status code tag for 3xx (#status) responses'(HttpResponseStatus status) {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.response.status(status.code()).send()
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.response.status(status.code()).send()
+					}
 				}
 			}
 		when:
-			app.test { t -> t.get() }
+			app.test { assert getText() == "" }
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
@@ -265,23 +246,23 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should report span with http status code tag for 4xx (#status) responses'(HttpResponseStatus status) {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.response.status(status.code()).send()
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.response.status(status.code()).send()
+					}
 				}
 			}
 		when:
-			app.test { t -> t.get() }
+			app.test { assert getText() == "" }
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
@@ -304,23 +285,23 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should report span with http status code tag for 5xx (#status) responses'(HttpResponseStatus status) {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.create(1f))
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.response.status(status.code()).send()
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.response.status(status.code()).send()
+					}
 				}
 			}
 		when:
-			app.test { t -> t.get() }
+			app.test { assert getText() == "" }
 		then:
 			reporter.getSpans().size() == 1
 			Span span = reporter.getSpans().get(0)
@@ -339,23 +320,23 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should not collect spans with 0 pct. sampling'() {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.NEVER_SAMPLE)
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
 				}
 			}
 		when:
-			app.test { t -> t.get() }
+			app.test { getText() == "" }
 
 		then:
 			reporter.getSpans().size() == 0
@@ -363,29 +344,28 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should collect spans with B3 header override sampling'() {
 		given:
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.NEVER_SAMPLE)
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx -> ctx.render("foo")
-						}
+				}
+				handlers {
+					chain -> chain.all {
+						ctx -> ctx.render("foo")
+					}
 				}
 			}
 		when:
-			app.test { t ->
-				t.request { spec ->
-					spec
-							.get()
-							.headers { headers ->
-						headers.add(B3PropagationHeaders.SAMPLED.value, "1")
-					}
+			app.test {
+				request { spec -> spec
+						.get()
+						.headers { headers ->
+							headers.add(B3PropagationHeaders.SAMPLED.value, "1")
+						}
 				}
 			}
 		then:
@@ -399,28 +379,27 @@ class ServerTracingModuleSpec extends Specification {
 			webServer.enqueue(new MockResponse().setResponseCode(200))
 			def url = webServer.url("/")
 		and: 'a handler that uses http client to call another service'
-			def app = GroovyEmbeddedApp.of { server ->
-				server.registry(Guice.registry { binding ->
-					binding.module(ServerTracingModule.class, { config ->
+			def app = ratpack {
+				bindings {
+					module(ServerTracingModule, { config ->
 						config
 								.serviceName("embedded")
 								.sampler(Sampler.ALWAYS_SAMPLE)
 								.spanReporterV2(reporter)
 					})
-				}).handlers {
-					chain ->
-						chain.all {
-							ctx ->
-								def client = ctx.get(ZipkinHttpClientImpl.class)
-								client.get(url.url().toURI())
-									.then{ resp -> ctx.render("Got response from client: " + resp.getStatusCode()) }
-						}
+				}
+				handlers {
+					chain -> chain.all { ctx ->
+						def client = ctx.get(HttpClient.class)
+						client.get(url.url().toURI())
+								.then{ resp -> ctx.render("Got response from client: " + resp.getStatusCode()) }
+					}
 				}
 			}
 
 		when: 'the handler is invoked'
-			app.test { t ->
-				t.request { spec ->
+			app.test {
+				request { spec ->
 					spec.get()
 				}
 			}
@@ -437,127 +416,105 @@ class ServerTracingModuleSpec extends Specification {
 
 	def 'Should customize current span'() {
 		given:
-		def app = GroovyEmbeddedApp.of { server ->
-			server.registry(Guice.registry { binding ->
-				binding.module(ServerTracingModule.class, { config ->
-					config
-							.serviceName("embedded")
-							.sampler(Sampler.create(1f))
-							.spanReporterV2(reporter)
-				})
-			}).handlers {
-				chain ->
-					chain.all { ctx ->
-						ctx.get(SpanCustomizer)
-								.tag("key1", "one")
-								.tag("key2", "two")
+      def app = ratpack {
+        bindings {
+          module(ServerTracingModule, { config ->
+            config
+                .serviceName("embedded")
+                .sampler(Sampler.create(1f))
+                .spanReporterV2(reporter)
+          })
+        }
+        handlers {
+          chain -> chain.all { ctx ->
+            ctx.get(SpanCustomizer)
+                .tag("key1", "one")
+                .tag("key2", "two")
 
-						ctx.render("foo")
-					}
-			}
-		}
+            ctx.render("foo")
+          }
+        }
+      }
 		when:
-		app.test { t ->
-			t.request { spec ->
-				spec.method(HttpMethod.GET)
-			}
-		}
+      app.test {
+        request { spec ->
+          spec.method(HttpMethod.GET)
+        }
+      }
 		then:
-		reporter.getSpans().size() == 1
-		Span span = reporter.getSpans().get(0)
-		span.tags().get("key1") == "one"
-		span.tags().get("key2") == "two"
+      reporter.getSpans().size() == 1
+      Span span = reporter.getSpans().get(0)
+      span.tags().get("key1") == "one"
+      span.tags().get("key2") == "two"
 	}
 	def 'Should allow span name customization'() {
 		given:
-            def app = GroovyEmbeddedApp.of { server ->
-                server.registry(Guice.registry { binding ->
-                    binding.module(ServerTracingModule.class, { config ->
-                        config
-                            .serviceName("embedded")
-                            .sampler(Sampler.ALWAYS_SAMPLE)
-                            .spanReporterV2(reporter)
-                            .spanNameProvider(new SpanNameProvider() {
-                            @Override
-                            String spanName(
-                                    final ServerRequest requestContext,
-                                    final Optional<PathBinding> pathBindingOpt) {
-                             	return pathBindingOpt
-									.map{ pathBinding -> pathBinding.getDescription()}
-									.orElse(requestContext.path)
-                            }
-                        } )
-                    }) }).handlers {
-                    chain ->
-                        chain.get("say/:message", new Handler() {
-                            @Override
-                            void handle(final Context ctx) throws Exception {
-                                ctx.response.send("yo!")
-                            }
-                        })
-                }
-            }
-		when:
-            app.test { t ->
-                t.get("say/hello")
-            }
-		then:
-            assertThat(reporter.getSpans()).isNotEmpty()
-            def span = reporter.getSpans().first()
-            assertThat(span.name()).isEqualTo("get /say/:message")
-	}
+      def app = ratpack {
+        bindings {
+          module(ServerTracingModule, { config ->
+            config
+              .serviceName("embedded")
+              .sampler(Sampler.ALWAYS_SAMPLE)
+              .spanReporterV2(reporter)
+              .spanNameProvider(new SpanNameProvider() {
+              @Override
+              String spanName(
+                final ServerRequest requestContext,
+                final Optional<PathBinding> pathBindingOpt) {
+                return pathBindingOpt
+                  .map { pathBinding -> pathBinding.getDescription() }
+                  .orElse(requestContext.path)
+              }
+            })
+          })
+        }
+        handlers {
+          chain ->
+            chain.get("say/:message", new Handler() {
+              @Override
+              void handle(final Context ctx) throws Exception {
+                ctx.response.send("yo!")
+              }
+            })
+        }
+      }
+    when:
+      app.test {
+        assert getText("say/hello") == "yo!"
+      }
+    then:
+      assertThat(reporter.getSpans()).isNotEmpty()
+      def span = reporter.getSpans().first()
+      assertThat(span.name()).isEqualTo("get /say/:message")
+  }
 
 	def 'Should allow configuration of PropagationFactory'() {
-		given:
-            def app = GroovyEmbeddedApp.of { server ->
-                server.registry(Guice.registry { binding ->
-                    binding.module(ServerTracingModule.class, { config ->
-                        config
-                                .serviceName("embedded")
-                                .sampler(Sampler.ALWAYS_SAMPLE)
-                                .spanReporterV2(reporter)
-								.propagationFactory(B3Propagation.FACTORY)
-                    })}).handlers {
-                    chain ->
-                        chain.get("say/:message", new Handler() {
-                            @Override
-                            void handle(final Context ctx) throws Exception {
-                                ctx.response.send("yo!")
-                            }
-                        })
-                }
-            }
+    given:
+      def app = ratpack {
+        bindings {
+          module(ServerTracingModule, { config ->
+            config
+              .serviceName("embedded")
+              .sampler(Sampler.ALWAYS_SAMPLE)
+              .spanReporterV2(reporter)
+              .propagationFactory(B3Propagation.FACTORY)
+          })
+        }
+        handlers {
+          chain ->
+            chain.get("say/:message", new Handler() {
+              @Override
+              void handle(final Context ctx) throws Exception {
+                ctx.response.send("yo!")
+              }
+            })
+        }
+      }
 		when:
-            app.test { t ->
-                t.get("say/hello")
-            }
+      app.test {
+        assert getText("say/hello") == "yo!"
+      }
 		then:
-            assertThat(reporter.getSpans()).isNotEmpty()
-	}
-
-	def 'Should allow configuration of v1 NOOP Reporter'() {
-		given: def app = GroovyEmbeddedApp.of { server ->
-                server.registry(Guice.registry { binding ->
-                    binding.module(ServerTracingModule.class, { config ->
-                        config
-                                .serviceName("embedded")
-                                .sampler(Sampler.ALWAYS_SAMPLE)
-                                .spanReporterV1(zipkin.reporter.Reporter.NOOP)
-                    })}).handlers {
-                    chain ->
-                        chain.get("say/:message", new Handler() {
-                            @Override
-                            void handle(final Context ctx) throws Exception {
-                                ctx.response.send("yo!")
-                            }
-                        })
-                }
-            }
-		when:
-            app.test { t ->
-                t.get("say/hello")
-            }
-		then:
-            assertThat(reporter.getSpans()).isEmpty()
+      assertThat(reporter.getSpans()).isNotEmpty()
 	}
 }

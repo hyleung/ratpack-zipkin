@@ -1,5 +1,6 @@
 package ratpack.zipkin.internal;
 
+import brave.Span;
 import com.google.common.net.HttpHeaders;
 import ratpack.path.PathBinding;
 import ratpack.zipkin.ServerRequest;
@@ -11,14 +12,13 @@ import zipkin2.Endpoint;
  * to something that brave.http.HttpServerParser can use to create the Span.
  */
 final class ServerHttpAdapter extends brave.http.HttpServerAdapter<ServerRequest, ServerResponse> {
-  @Override
-  public boolean parseClientAddress(final ServerRequest serverRequest,
-                                    final Endpoint.Builder builder) {
-    String forwardedFor = requestHeader(serverRequest, HttpHeaders.X_FORWARDED_FOR);
-    if (forwardedFor != null) {
-      return builder.parseIp(forwardedFor);
+
+  @Override public boolean parseClientIpAndPort(ServerRequest req, Span span) {
+    boolean result = super.parseClientIpAndPort(req, span);
+    if (!result) {
+      result = span.remoteIpAndPort(req.getRemoteAddress().getHost(), req.getRemoteAddress().getPort());
     }
-    return builder.parseIp(serverRequest.getRemoteAddress().getHostText());
+    return result;
   }
 
   @Override public String method(ServerRequest request) {

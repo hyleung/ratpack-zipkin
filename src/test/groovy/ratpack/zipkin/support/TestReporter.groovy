@@ -7,18 +7,18 @@ import java.util.concurrent.ConcurrentLinkedDeque
 
 class TestReporter implements Reporter<Span> {
 
-	private final ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>()
+  private final ConcurrentLinkedDeque<Span> spans = new ConcurrentLinkedDeque<>()
 
-	@Override
-	void report(Span span) {
-		spans.add(span)
-	}
+  @Override
+  void report(Span span) {
+    spans.add(span)
+  }
 
-	List<Span> getSpans() {
-		return spans.asImmutable().toList()
-	}
+  List<Span> getSpans() {
+    return spans.asImmutable().toList()
+  }
 
-	void reset() {
-		spans.clear()
-	}
+  void reset() {
+    spans.clear()
+  }
 }
