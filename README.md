@@ -1,5 +1,11 @@
 # ratpack-zipkin
 
+*Note: This library has been moved to the [openzipkin-contrib](https://github.com/openzipkin-contrib) organization and is **no longer** maintained in here.*
+
+See [https://github.com/openzipkin-contrib/brave-ratpack](https://github.com/openzipkin-contrib/brave-ratpack)
+
+# ARCHIVED
+
 ![Build status](https://travis-ci.org/hyleung/ratpack-zipkin.svg?branch=master) [![codecov.io](http://codecov.io/github/hyleung/ratpack-zipkin/coverage.svg?branch=master)](http://codecov.io/github/hyleung/ratpack-zipkin?branch=master)
 
 [Zipkin](https://twitter.github.io/zipkin/index.html) support for [Ratpack](http://www.ratpack.io).
