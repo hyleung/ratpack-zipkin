@@ -30,19 +30,17 @@ import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
-import ratpack.api.Nullable;
 import ratpack.guice.ConfigurableModule;
 import ratpack.handling.HandlerDecorator;
 import ratpack.http.client.HttpClient;
 import ratpack.server.ServerConfig;
+import ratpack.util.Exceptions;
+import ratpack.zipkin.internal.DefaultClientTracingInterceptor;
 import ratpack.zipkin.internal.DefaultServerTracingHandler;
 import ratpack.zipkin.internal.RatpackCurrentTraceContext;
 import ratpack.zipkin.internal.RatpackHttpServerParser;
-import ratpack.zipkin.internal.ZipkinHttpClientImpl;
-import zipkin2.Endpoint;
 import zipkin2.Span;
 import zipkin2.reporter.Reporter;
-import java.net.InetAddress;
 
 /**
  * Module for Zipkin distributed tracing.
@@ -55,11 +53,28 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
         .to(DefaultServerTracingHandler.class)
         .in(Singleton.class);
 
-    bind(HttpClient.class).annotatedWith(Zipkin.class)
-        .to(ZipkinHttpClientImpl.class)
-        .in(Singleton.class);
+    bind(ClientTracingInterceptor.class)
+            .to(DefaultClientTracingInterceptor.class)
+            .in(Singleton.class);
 
-    bind(ZipkinHttpClientImpl.class);
+    Provider<ClientTracingInterceptor> clientTracingInterceptorProvider =
+            getProvider(ClientTracingInterceptor.class);
+
+    Provider<HttpClient> httpClientProvider = () ->
+            // HttpClient.of throws exceptions but Providers can not, hence the unchecked wrapper.
+            Exceptions.uncheck(() -> HttpClient.of(spec -> {
+              spec.requestIntercept(clientTracingInterceptorProvider.get()::request);
+              spec.responseIntercept(clientTracingInterceptorProvider.get()::response);
+            }));
+
+    bind(HttpClient.class)
+            .toProvider(httpClientProvider)
+            .in(Singleton.class);
+
+    bind(HttpClient.class)
+            .annotatedWith(Zipkin.class)
+            .toProvider(httpClientProvider)
+            .in(Singleton.class);
 
     Provider<ServerTracingHandler> serverTracingHandlerProvider =
         getProvider(ServerTracingHandler.class);
@@ -86,29 +101,23 @@ public class ServerTracingModule extends ConfigurableModule<ServerTracingModule.
 
   @Provides @Singleton
   public HttpTracing getHttpTracing(final Config config, final ServerConfig serverConfig) {
-    Tracing tracing = Tracing.newBuilder()
+    Tracing.Builder builder = Tracing.newBuilder()
                              .sampler(config.sampler)
                              .currentTraceContext(new RatpackCurrentTraceContext())
-                             .endpoint(buildEndpoint(config.serviceName, serverConfig.getPort(),
-                                 serverConfig.getAddress()))
+                             .localServiceName(config.serviceName)
+                             .localPort(serverConfig.getPort())
                              .spanReporter(config.spanReporter)
-                             .propagationFactory(config.propagationFactory)
-                             .build();
-    return HttpTracing.newBuilder(tracing)
+                             .propagationFactory(config.propagationFactory);
+    if (serverConfig.getAddress() != null) {
+        builder = builder.localIp(serverConfig.getAddress().getHostAddress());
+    }
+
+    return HttpTracing.newBuilder(builder.build())
                       .clientParser(config.clientParser)
                       .serverParser(config.serverParser)
                       .serverSampler(config.serverSampler)
                       .clientSampler(config.clientSampler)
                       .build();
-  }
-
-  private static Endpoint buildEndpoint(String serviceName, int port, @Nullable InetAddress configAddress) {
-    Endpoint.Builder builder = Endpoint.newBuilder();
-    if (!builder.parseIp(configAddress)) {
-      // TODO: shade brave.internal.Platform
-      builder = brave.internal.Platform.get().endpoint().toBuilder();
-    }
-    return builder.serviceName(serviceName).port(port).build();
   }
 
   /**
